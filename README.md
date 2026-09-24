@@ -26,6 +26,8 @@ At user scope, so the skills work in every project:
 
 ```
 /plugin marketplace add https://github.com/PoTAsh2000/obsidian-wiki.git
+/plugin install wiki-vault@obsidian-wiki
+/wiki-vault:add C:/Users/you/Obsidian/MyVault
 /plugin install wiki-query@obsidian-wiki
 ```
 
@@ -33,7 +35,7 @@ Install the other plugins the same way: `wiki-save`, `wiki-ingest` and `wiki-lin
 
 Some plugins depend on others. `wiki-ingest` calls `wiki-lint` to check notes before and after filing them, so installing `wiki-ingest` installs `wiki-lint` automatically. The other plugins stand on their own.
 
-Each plugin asks for the vault folder (`vault_path`) on install. If that value is not available, the skill falls back to `OBSIDIAN_VAULT` in `env` of `~/.claude/settings.json`, and if that is missing too, asks once and proposes the change.
+You configure the vault folder once with `wiki-vault`. It stores the path in `~/.claude/obsidian-wiki/vault-path`, and every other skill reads it from there. When no path is configured, a skill stops and tells you to run `/wiki-vault:add`.
 
 Auto-update is off by default for third-party marketplaces. Turn it on once: `/plugin`, Marketplaces tab, `obsidian-wiki`, "Enable auto-update". To update right away: `/plugin marketplace update obsidian-wiki`.
 
@@ -41,6 +43,9 @@ Auto-update is off by default for third-party marketplaces. Turn it on once: `/p
 
 | Command | What it does |
 |---|---|
+| `/wiki-vault:add C:/Users/you/Obsidian/MyVault` | Configure the vault folder for all plugins (asks for it when no path is given) |
+| `/wiki-vault:overwrite D:/Notes/Vault` | Replace the configured vault folder |
+| `/wiki-vault:delete` | Remove the configured vault folder |
 | `/wiki-save:save` | Save the last useful answer as a `draft` in `01. Inbox` (Claude proposes a title) |
 | `/wiki-save:save Dolphin sleep patterns` | Same, with a given title |
 | `/wiki-ingest:ingest` | List all `draft` notes, ask which one, then plan moving it out of the Inbox |

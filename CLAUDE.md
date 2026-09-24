@@ -15,12 +15,13 @@ This file is only loaded while developing inside this repo, never while a skill 
 - `wiki-ingest:ingest` only moves drafts out of `01. Inbox` and sets `review`.
 - `wiki-ingest:apply` only sets `evergreen`.
 - Only ingest and apply change `status`.
+- Only `wiki-vault` writes `~/.claude/obsidian-wiki/vault-path`, and it never touches the vault.
 - No skill deletes a note.
 
-## Every skill
+## Every skill (except `wiki-vault`)
 
 - Starts with "read the vault `CLAUDE.md`".
-- Resolves the vault path in this order: the plugin option `${user_config.vault_path}` (substituted into skill text; `CLAUDE_PLUGIN_OPTION_VAULT_PATH` does not reach the Bash tool), then `OBSIDIAN_VAULT` from `env` in `~/.claude/settings.json`, then asks the user once and writes `OBSIDIAN_VAULT` to `settings.json` only after their OK.
+- Reads the vault path from `~/.claude/obsidian-wiki/vault-path`. Missing or empty: replies `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stops. Never asks for the path and never writes it.
 - Calls other plugins by skill name (for example `wiki-lint:lint`), never by script path. A skill only knows its own folder through `${CLAUDE_PLUGIN_ROOT}`.
 
 ## Scripts
