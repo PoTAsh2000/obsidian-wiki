@@ -25,6 +25,11 @@
       "name": "wiki-ingest",
       "source": "./plugins/wiki-ingest",
       "description": "Plans and applies moving draft notes out of the Obsidian Inbox (draft to review); apply marks reviewed notes evergreen"
+    },
+    {
+      "name": "wiki-vault",
+      "source": "./plugins/wiki-vault",
+      "description": "Configure the Obsidian vault folder once for all obsidian-wiki plugins: add, overwrite or delete the vault path"
     }
   ]
 }

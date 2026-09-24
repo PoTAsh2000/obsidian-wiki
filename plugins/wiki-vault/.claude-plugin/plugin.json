@@ -1,0 +1,7 @@
+{
+  "name": "wiki-vault",
+  "description": "Configure the Obsidian vault folder once for all obsidian-wiki plugins: add, overwrite or delete the vault path",
+  "author": {
+    "name": "Thomas Arensman"
+  }
+}
