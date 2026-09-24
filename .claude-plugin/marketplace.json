@@ -20,6 +20,11 @@
       "name": "wiki-lint",
       "source": "./plugins/wiki-lint",
       "description": "Check my Obsidian vault: move stray drafts to the Inbox, unlink dead links, and report orphans, frontmatter, empty sections, duplicates and old Inbox notes"
+    },
+    {
+      "name": "wiki-ingest",
+      "source": "./plugins/wiki-ingest",
+      "description": "Plans and applies moving draft notes out of the Obsidian Inbox (draft to review); apply marks reviewed notes evergreen"
     }
   ]
 }
