@@ -1,0 +1,15 @@
+{
+  "name": "wiki-lint",
+  "description": "Check my Obsidian vault: move stray drafts to the Inbox, unlink dead links, and report orphans, frontmatter, empty sections, duplicates and old Inbox notes",
+  "author": {
+    "name": "Thomas Arensman"
+  },
+  "userConfig": {
+    "vault_path": {
+      "type": "string",
+      "title": "Obsidian vault folder",
+      "description": "Absolute path to the root folder of your Obsidian vault",
+      "sensitive": false
+    }
+  }
+}
