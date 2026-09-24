@@ -42,22 +42,22 @@ Auto-update is off by default for third-party marketplaces. Turn it on once: `/p
 | Command | What it does |
 |---|---|
 | `/wiki-save:save` | Save the last useful answer as a `draft` in `01. Inbox` (Claude proposes a title) |
-| `/wiki-save:save ACE vs SOP` | Same, with a given title |
+| `/wiki-save:save Dolphin sleep patterns` | Same, with a given title |
 | `/wiki-ingest:ingest` | List all `draft` notes, ask which one, then plan moving it out of the Inbox |
 | `/wiki-ingest:ingest all` | Plan every `draft` note |
 | `/wiki-ingest:apply` | Mark every `review` note as `evergreen` (only runs when typed) |
 | `/wiki-lint:lint` | Full vault check: moves stray drafts, unlinks dead links, reports the rest |
 | `/wiki-lint:lint --files "01. Inbox/"` | Same, for every note in one folder |
-| `/wiki-query:query what is context engineering?` | Answer from my notes with `[[Note]]` citations |
-| `/wiki-query:name context` | Notes whose filename or title contains "context" |
-| `/wiki-query:tag ai tooling` | Notes per tag |
-| `/wiki-query:topic EDI` | Notes per topic |
+| `/wiki-query:query how do seals stay warm?` | Answer from my notes with `[[Note]]` citations |
+| `/wiki-query:name dolphin` | Notes whose filename or title contains "dolphin" |
+| `/wiki-query:tag mammals reefs` | Notes per tag |
+| `/wiki-query:topic seals` | Notes per topic |
 | `/wiki-query:status review draft` | Notes per status |
 
-Normal language works too: "save this to my vault", "process my inbox", "check my vault", "what do I already know about EDI mapping?".
+Normal language works too: "save this to my vault", "process my inbox", "check my vault", "what do I already know about orca migration?".
 
 ## Contribution
 
 This repo was originally created for my personal use. If you find a bug or want to see a feature, feel free to [open an issue](https://github.com/PoTAsh2000/obsidian-wiki/issues/new/choose) using the bug or feature template. A change will probably only be accepted if it still matches my own use case.
 
-If you like the repo, feel free to give it a star.
+If you like the repo, feel free to give it a star <img src="assets/star.svg" alt="star" width="16" height="16">
