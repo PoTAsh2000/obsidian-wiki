@@ -26,12 +26,14 @@ Read `CLAUDE.md` in the vault root and follow it: folders, frontmatter schema, a
 
 ## 3. Lint the whole vault first
 
-Invoke the skill `wiki-lint:lint` by name with no arguments (never call a lint script by path). This moves stray drafts into the Inbox before ingest selects notes. If lint reports a usage error (exit code 2), show it and stop. Keep from its result:
+Invoke the skill `wiki-lint:lint` by name with no arguments (never call a lint script by path). This moves stray drafts into the Inbox before ingest selects notes. If lint reports a usage error (exit code 2), show it and stop.
 
-- `orphans`: candidates for link rows in the plan. Only this full run gives orphans; the `--files` run in step 7 does not.
-- `findings` for the selected drafts (for example `frontmatter-missing`, `frontmatter-invalid`, `empty-section`): take them into the plan.
+Show nothing of lint's result to the user at this point: no summary, no list of fixes or findings. Its data only feeds the plan. Keep from its result:
+
+- `orphans`: candidates for orphan rows in the plan. Only this full run gives orphans; the `--files` run in step 7 does not.
+- `findings` for the selected drafts (for example `frontmatter-missing`, `frontmatter-invalid`, `empty-section`, `ambiguous-link`): turn them into plan rows.
 - `placeholderLinks`: never touch these links.
-- `movedToInbox` and `removedDeadLinks`: mention them briefly to the user, as lint's own fixes.
+- `movedToInbox` and `removedDeadLinks`: keep them for the summary in step 8.
 
 ## 4. Select the notes
 
@@ -45,31 +47,47 @@ A note is a candidate only when it is inside `01. Inbox` (not in a subfolder) an
 
 For each selected note, read it and work out:
 
-- **Frontmatter:** fix it to the schema in the vault `CLAUDE.md` (`type`, `topic`, `aliases`, `tags`, `created`, `related`, `source`). The final `status` is `review`. A `type` that is not in the allowed list is proposed to the user as a new value, never used silently.
+- **Frontmatter:** fix it to the schema in the vault `CLAUDE.md` (`type`, `topic`, `aliases`, `tags`, `created`, `related`, `source`). A `type` that is not in the allowed list gets its own `new type:` row, never used silently.
 - **Structure:** tidy headings and layout; keep the content and meaning.
 - **Links:** add `[[Note]]` links (shortest form) to existing notes found by searching filenames, titles and aliases, and fill `related`.
 - **Orphans:** for each note in lint's `orphans` list that is really related to this draft, add a separate plan row with a link from the draft to the orphan or from the orphan to the draft. Unrelated orphans stay as they are.
-- **Destination:** the folder from the vault `CLAUDE.md` that fits (`20. Customers`, `30. Knowledge`, `40. Projects`, ...), or a merge into an existing note. If the destination is unclear, the note stays in `01. Inbox` as `draft`; say why.
-- **Name clash:** if a note with the same filename already exists in the destination, do not plan a move there; mark the row and ask the user.
+- **Destination:** the folder from the vault `CLAUDE.md` that fits (`20. Customers`, `30. Knowledge`, `40. Projects`, ...), or a merge into an existing note. If no folder fits the note content, the destination is `keep, <reason>`.
+- **Name clash:** if a note with the same filename already exists in the destination, do not plan a move there; the destination becomes `keep, name clash in <folder>`.
 
-Show one plan table and stop:
+Show only this, with no text before it and at most one line after it asking for approval:
 
-| # | Note | Action | Changes | Destination |
+## Changes to ingest
+
+| id | note | state | change | destination |
 |---|---|---|---|---|
-| 1 | 01. Inbox/Tokens.md | move | frontmatter, 3 links, status review | 30. Knowledge/Tokens.md |
-| 2 | 30. Knowledge/Context Window.md | link (orphan) | add `[[Tokens]]` under Related | stays |
-| 3 | 01. Inbox/ACE notes.md | merge | into `30. Knowledge/ACE.md` | 99. Archived/ACE notes.md |
-| 4 | 01. Inbox/Idea.md | keep | none, destination unclear: ... | stays in Inbox as draft |
+| 1 | Tokens | draft | actions: formatter | 30. Knowledge |
+| 2 | Tokens | draft | new links: [[Context Window]], [[LLM]] | 30. Knowledge |
+| 3 | Tokens | draft | actions: new type: concept | 30. Knowledge |
+| 4 | Context Window | orphan | new links: [[Tokens]] | keep, orphan stays in 30. Knowledge |
+| 5 | ACE notes | draft | merge with: ACE | 99. Archived |
+| 6 | Idea | draft | actions: formatter | keep, no relevant target found based on note content |
 
-Wait for the user's OK. Apply only the rows they approved; they may approve some rows and not others. A merge row needs an explicit OK that names both the source and the target note, per the vault `CLAUDE.md`. Anything not in the approved rows needs a new plan.
+Table rules:
+
+- **id:** an incrementing number per row, so the user can say "id 3: do this instead".
+- **note:** the filename without `.md` and without folder.
+- **state:** `draft` or `orphan`, nothing else. List an orphan only when ingest really changes it; orphans that stay orphan are not in the table.
+- **change:** exactly one change per row. A note with several changes gets several rows, with note and destination repeated. Allowed changes:
+  - `new links:` the `[[Note]]` links to add, comma separated.
+  - `merge with:` one or more target notes, comma separated.
+  - `actions:` one of `formatter` (frontmatter to the schema and tidy structure), `new type: <value>` (a `type` not in the allowed list), `fill section: <heading>` (an empty section), `fix link: [[X]]` (an ambiguous link rewritten to path form), `add alias: <name>`, or any other frontmatter property change such as `set topic: <value>`, `add tag: <tag>` or `set source: <value>`. Never `status`.
+  - `none` when a draft has nothing to change; it still gets one row.
+- **destination:** a folder path, or `keep, <reason>`. Status is never a row, it follows from the destination: a folder means `status: review`, `keep` means the note stays `draft` in `01. Inbox` (its other approved rows are still applied). A merge source goes to `99. Archived`. A name clash in the target folder gives `keep, name clash in <folder>`. An orphan always gets `keep, orphan stays in <folder>`.
+
+Wait for one reply. It is either an OK, or an OK with changes per id (for example "id 3 skip", "id 6 to 40. Projects", "id 2 also [[X]]"). Apply those changes to the plan and go straight to step 6: do not show the table again and do not ask again. Approving the table is the explicit OK for each merge row, because the row names both the source (`note`) and the target (`merge with:`). A reply that does not approve means no change at all.
 
 ## 6. Apply, one note at a time
 
-Finish each note completely before starting the next:
+Finish each note completely before starting the next, without asking the user anything:
 
-1. Edit the note: frontmatter, structure, links, `status: review`.
-2. Move it with its filename unchanged: `mv -n "<vault>/01. Inbox/<name>.md" "<vault>/<folder>/<name>.md"`. If the target exists, do not move; stop and ask.
-3. Apply the approved orphan link rows for this note.
+1. Edit the note with its approved rows. Set `status: review` only when it has a folder destination; a `keep` note stays `draft`.
+2. Move it with its filename unchanged: `mv -n "<vault>/01. Inbox/<name>.md" "<vault>/<folder>/<name>.md"`. If the target exists, do not move: set the note back to `status: draft`, leave it in `01. Inbox` and note it for step 8.
+3. Apply the approved orphan rows for this note.
 4. For an approved merge: add the source's content to the target, add the source's title to the target's `aliases`, change links to the source into links to the target, set the source to `status: archived` and move it to `99. Archived` with its filename unchanged. The target gets `status: review`; the source is never deleted.
 
 Keep a list of every changed note by its path after the move.
@@ -78,9 +96,14 @@ Keep a list of every changed note by its path after the move.
 
 Invoke `wiki-lint:lint --files "<path 1>" "<path 2>" ...` with every note changed in step 6 (drafts, orphans that got a link, merge targets and archived sources), paths from the vault root after the move, each one quoted. Lint runs straight away and checks stray draft, frontmatter, outgoing dead links, ambiguous links and empty sections for those notes. Skip this step when nothing changed.
 
-## 8. Report lint's result
+## 8. Summary of what is left
 
-Tell the user what lint fixed (`movedToInbox`, `removedDeadLinks`) and what it found (`findings`), by impact. Ingest fixes nothing more itself; any further fix is a new plan the user approves.
+Short and scannable: a point list or a small table per group, no prose story. Skip empty groups.
+
+- **Lint fixed:** `movedToInbox` (`from` to `to`) and `removedDeadLinks` (`path:line` and the original link) from both lint runs.
+- **Still to consider:** step 7 `findings` as a table `category | note | detail`, plus skipped ids, drafts kept in the Inbox with their reason, and moves that failed on a name clash.
+
+Ingest fixes nothing more itself; any further fix is a new ingest run.
 
 ## 9. Final list
 
