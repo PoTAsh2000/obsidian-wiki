@@ -5,5 +5,11 @@
   "owner": {
     "name": "Thomas Arensman"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "wiki-save",
+      "source": "./plugins/wiki-save",
+      "description": "Save a useful answer from the conversation as a draft note in the Inbox of my Obsidian vault"
+    }
+  ]
 }
