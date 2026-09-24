@@ -3,13 +3,5 @@
   "description": "Save a useful answer from the conversation as a draft note in the Inbox of my Obsidian vault",
   "author": {
     "name": "Thomas Arensman"
-  },
-  "userConfig": {
-    "vault_path": {
-      "type": "string",
-      "title": "Obsidian vault folder",
-      "description": "Absolute path to the root folder of your Obsidian vault",
-      "sensitive": false
-    }
   }
 }

@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# find.sh [--vault <dir>] <name|tag|topic|status> <value>...
+# find.sh --vault <dir> <name|tag|topic|status> <value>...
 # Read-only lookups in an Obsidian vault. Paths from the vault root, sorted.
-# Vault: --vault, else CLAUDE_PLUGIN_OPTION_VAULT_PATH, else OBSIDIAN_VAULT.
+# Vault: --vault (required).
 # Exit 0 found, 1 nothing found, 2 usage error.
 set -u
 
-usage() { echo "usage: find.sh [--vault <dir>] <name|tag|topic|status> <value>..." >&2; [ -n "${1:-}" ] && echo "$1" >&2; exit 2; }
+usage() { echo "usage: find.sh --vault <dir> <name|tag|topic|status> <value>..." >&2; [ -n "${1:-}" ] && echo "$1" >&2; exit 2; }
 
-vault="${CLAUDE_PLUGIN_OPTION_VAULT_PATH:-${OBSIDIAN_VAULT:-}}"
+vault=
 if [ "${1:-}" = "--vault" ]; then
   [ $# -ge 2 ] || usage "--vault needs a folder"
   vault=$2; shift 2
 fi
-[ -n "$vault" ] || usage "vault path not set: use --vault, CLAUDE_PLUGIN_OPTION_VAULT_PATH or OBSIDIAN_VAULT"
+[ -n "$vault" ] || usage "vault path not set: use --vault"
 cd "$vault" 2>/dev/null || usage "vault folder not found: $vault"
 
 field=${1:-}

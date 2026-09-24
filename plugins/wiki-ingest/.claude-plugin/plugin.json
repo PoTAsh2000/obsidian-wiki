@@ -4,13 +4,5 @@
   "author": {
     "name": "Thomas Arensman"
   },
-  "userConfig": {
-    "vault_path": {
-      "type": "string",
-      "title": "Obsidian vault folder",
-      "description": "Full path to the root folder of your Obsidian vault",
-      "sensitive": false
-    }
-  },
   "dependencies": ["wiki-lint"]
 }

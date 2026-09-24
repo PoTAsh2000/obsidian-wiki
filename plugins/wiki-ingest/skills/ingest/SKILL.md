@@ -12,13 +12,16 @@ What ingest may change: only notes with `status: draft` inside `01. Inbox` (edit
 
 ## 1. Vault path
 
-Resolve the vault folder in this order, and stop at the first one that is set:
+Read the vault path configured by `wiki-vault`:
 
-1. The plugin option set at install: `${user_config.vault_path}`. It counts as set only when it shows a real path here, not an empty value or the literal placeholder.
-2. `OBSIDIAN_VAULT` in the `env` object of `~/.claude/settings.json` (read the file).
-3. Neither is set: ask the user once for the vault path. Show the exact change (`"env": { "OBSIDIAN_VAULT": "<path>" }` added to `~/.claude/settings.json`, keeping everything else) and write it only after their OK. Without an OK, use the path for this run only.
+```bash
+cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
+```
 
-The path is valid when it contains `CLAUDE.md`. If not, say so and ask again.
+- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
+- The folder does not contain `CLAUDE.md`: say so, point to `/wiki-vault:overwrite`, and stop.
+
+Never ask for the path and never write it; only `wiki-vault` does that.
 
 ## 2. Read the vault rules
 

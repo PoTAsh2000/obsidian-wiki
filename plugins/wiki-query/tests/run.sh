@@ -37,18 +37,12 @@ check nothing 1 tag missing
 check topic 0 topic EDI
 check status 0 status review draft
 
-# vault path resolution: plugin option first, then OBSIDIAN_VAULT
-out=$(CLAUDE_PLUGIN_OPTION_VAULT_PATH="$vault" OBSIDIAN_VAULT=/nonexistent bash "$find" status review draft)
-[ "$out" = "$(cat "$here/expected/status.txt")" ] || { echo "FAIL env plugin option"; fail=1; }
-out=$(env -u CLAUDE_PLUGIN_OPTION_VAULT_PATH OBSIDIAN_VAULT="$vault" bash "$find" status review draft)
-[ "$out" = "$(cat "$here/expected/status.txt")" ] || { echo "FAIL env OBSIDIAN_VAULT"; fail=1; }
-
 # usage errors
 code usage-no-args 2 bash "$find" --vault "$vault"
 code usage-unknown-field 2 bash "$find" --vault "$vault" color red
 code usage-no-value 2 bash "$find" --vault "$vault" tag
 code usage-bad-vault 2 bash "$find" --vault "$vault/missing" tag ai
-code usage-no-vault 2 env -u CLAUDE_PLUGIN_OPTION_VAULT_PATH -u OBSIDIAN_VAULT bash "$find" tag ai
+code usage-no-vault 2 bash "$find" tag ai
 
 after=$(cd "$vault" && find . -type f -exec md5sum {} + | sort)
 [ "$before" = "$after" ] || { echo "FAIL fixture vault changed"; fail=1; }

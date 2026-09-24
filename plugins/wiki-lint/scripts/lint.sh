@@ -4,16 +4,16 @@
 # Everything else is reported. Output: one JSON object on stdout.
 # Exit: 0 clean, 1 fixes or findings, 2 usage error.
 #
-# Usage: lint.sh [--vault <dir>] [--dry-run] [--files <path>...]
-#   Vault: --vault, else CLAUDE_PLUGIN_OPTION_VAULT_PATH, else OBSIDIAN_VAULT.
+# Usage: lint.sh --vault <dir> [--dry-run] [--files <path>...]
+#   Vault: --vault (required).
 #   --files: only these notes or folders (relative to the vault root).
 set -u
 export LC_ALL=C
 
 die() { echo "lint.sh: $*" >&2; exit 2; }
-usage() { die "usage: lint.sh [--vault <dir>] [--dry-run] [--files <path>...]"; }
+usage() { die "usage: lint.sh --vault <dir> [--dry-run] [--files <path>...]"; }
 
-vault=${CLAUDE_PLUGIN_OPTION_VAULT_PATH:-${OBSIDIAN_VAULT:-}}
+vault=
 dry=0 files_mode=0 files=()
 while [ $# -gt 0 ]; do
   case $1 in
@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
     *) usage ;;
   esac
 done
-[ -n "$vault" ] || die "no vault path: set CLAUDE_PLUGIN_OPTION_VAULT_PATH or OBSIDIAN_VAULT, or pass --vault"
+[ -n "$vault" ] || die "no vault path: pass --vault"
 command -v cygpath > /dev/null && vault=$(cygpath -u "$vault")
 [ -d "$vault" ] || die "vault not found: $vault"
 cd "$vault" || die "cannot enter vault: $vault"
