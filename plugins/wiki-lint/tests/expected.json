@@ -19,7 +19,7 @@
     {"path": "30. Knowledge/Dead Links.md", "line": 13, "deadLink": "![alt](Attachments/missing.png)"},
     {"path": "30. Knowledge/Dead Links.md", "line": 13, "deadLink": "![](nothing.png)"},
     {"path": "30. Knowledge/Dead Links.md", "line": 14, "deadLink": "[[Missing]]"},
-    {"path": "30. Knowledge/Dead Links.md", "line": 18, "deadLink": "[[Missing Table\|table text]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 18, "deadLink": "[[Missing Table\\|table text]]"},
     {"path": "30. Knowledge/No Trailing Newline.md", "line": 8, "deadLink": "[[Final Missing|final]]"},
     {"path": "90. Templates/Knowledge Template.md", "line": 9, "deadLink": "[[Template Missing]]"},
     {"path": "99. Archived/Old Note.md", "line": 8, "deadLink": "[[Archived Missing]]"}
