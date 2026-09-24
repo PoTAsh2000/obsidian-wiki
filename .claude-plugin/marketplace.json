@@ -1,0 +1,9 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "obsidian-wiki",
+  "description": "Skills that keep a personal Obsidian vault tidy: save, ingest, lint and query notes",
+  "owner": {
+    "name": "Thomas Arensman"
+  },
+  "plugins": []
+}
