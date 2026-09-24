@@ -3,13 +3,5 @@
   "description": "Answer questions from my Obsidian vault with [[Note]] citations, plus fast read-only lookups by name, tag, topic and status",
   "author": {
     "name": "Thomas Arensman"
-  },
-  "userConfig": {
-    "vault_path": {
-      "type": "string",
-      "title": "Obsidian vault folder",
-      "description": "Full path to your Obsidian vault folder",
-      "sensitive": false
-    }
   }
 }

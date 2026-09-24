@@ -12,13 +12,16 @@ Runs `lint.sh`, which checks the vault and fixes exactly two things on its own, 
 
 First find the vault, then read `<vault>/CLAUDE.md` before anything else. Its rules win over this skill on any difference, except that lint only makes the two fixes above.
 
-Resolve the vault path in this order and stop at the first that gives a folder:
+Read the vault path configured by `wiki-vault`:
 
-1. The plugin option set at install: `${user_config.vault_path}`. It counts as set only when it shows a real path here, not an empty value or the literal placeholder.
-2. Read `~/.claude/settings.json` and take `env.OBSIDIAN_VAULT`.
-3. Neither is set: ask the user once for the vault folder. Show the exact change to `~/.claude/settings.json` (add `"OBSIDIAN_VAULT": "<path>"` under `env`, keeping everything else). Write it only after their OK. Without an OK, use the path for this run only.
+```bash
+cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
+```
 
-The path is valid when it contains `CLAUDE.md`. If not, say so and ask again.
+- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
+- The folder does not contain `CLAUDE.md`: say so, point to `/wiki-vault:overwrite`, and stop.
+
+Never ask for the path and never write it; only `wiki-vault` does that.
 
 ## 2. Run the script
 

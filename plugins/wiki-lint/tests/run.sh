@@ -44,7 +44,7 @@ bash "$lint" --vault "$tmp/v" --bogus > /dev/null 2>&1; [ $? = 2 ] || fail "unkn
 bash "$lint" --vault "$tmp/nope" > /dev/null 2>&1; [ $? = 2 ] || fail "missing vault not exit 2"
 bash "$lint" --vault "$tmp/v" --files "No Such.md" > /dev/null 2>&1; [ $? = 2 ] || fail "missing --files path not exit 2"
 bash "$lint" --vault "$tmp/v" --files > /dev/null 2>&1; [ $? = 2 ] || fail "--files without paths not exit 2"
-(unset CLAUDE_PLUGIN_OPTION_VAULT_PATH OBSIDIAN_VAULT; bash "$lint" > /dev/null 2>&1); [ $? = 2 ] || fail "no vault path not exit 2"
+bash "$lint" > /dev/null 2>&1; [ $? = 2 ] || fail "no vault path not exit 2"
 rm "$tmp/v/CLAUDE.md"
 bash "$lint" --vault "$tmp/v" --dry-run > /dev/null 2>&1; [ $? = 2 ] || fail "vault without CLAUDE.md not exit 2"
 
