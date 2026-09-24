@@ -1,0 +1,62 @@
+{
+  "movedToInbox": [
+    {"from": "30. Knowledge/Stray Draft.md", "to": "01. Inbox/Stray Draft.md"},
+    {"from": "90. Templates/Draft Template.md", "to": "01. Inbox/Draft Template.md"}
+  ],
+  "removedDeadLinks": [
+    {"path": "01. Inbox/Stray Draft.md", "line": 8, "deadLink": "[[Gone]]"},
+    {"path": "10. Daily/2026-09-20.md", "line": 3, "deadLink": "[[Daily Missing]]"},
+    {"path": "30. Knowledge/CRLF Note.md", "line": 8, "deadLink": "[[CRLF Missing]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 5, "deadLink": "[[Missing Related]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 9, "deadLink": "[[Missing]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 10, "deadLink": "[[Missing|shown text]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 11, "deadLink": "[[Missing#Part]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 11, "deadLink": "[[Missing#^x]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 12, "deadLink": "[text](missing.md)"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 12, "deadLink": "[spaced](<Missing Page.md>)"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 12, "deadLink": "[encoded](Missing%20Page.md)"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 13, "deadLink": "![[missing.png]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 13, "deadLink": "![alt](Attachments/missing.png)"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 13, "deadLink": "![](nothing.png)"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 14, "deadLink": "[[Missing]]"},
+    {"path": "30. Knowledge/Dead Links.md", "line": 18, "deadLink": "[[Missing Table\|table text]]"},
+    {"path": "30. Knowledge/No Trailing Newline.md", "line": 8, "deadLink": "[[Final Missing|final]]"},
+    {"path": "90. Templates/Knowledge Template.md", "line": 9, "deadLink": "[[Template Missing]]"},
+    {"path": "99. Archived/Old Note.md", "line": 8, "deadLink": "[[Archived Missing]]"}
+  ],
+  "placeholderLinks": [
+    {"path": "90. Templates/Knowledge Template.md", "line": 5, "link": "[[{{title}}]]"},
+    {"path": "90. Templates/Knowledge Template.md", "line": 9, "link": "[[{{title}}]]"}
+  ],
+  "orphans": [
+    "01. Inbox/Draft Template.md",
+    "30. Knowledge/Orphan.md"
+  ],
+  "findings": [
+    {"category": "frontmatter-missing", "path": "01. Inbox/No Frontmatter.md", "line": 1, "detail": "no frontmatter"},
+    {"category": "inbox-age", "path": "01. Inbox/Old Idea.md", "line": 4, "detail": "created 2020-01-01, older than 7 days"},
+    {"category": "duplicate-name", "path": "01. Inbox/Taken.md", "line": 1, "detail": "same name as 30. Knowledge/Taken.md"},
+    {"category": "ambiguous-link", "path": "30. Knowledge/Ambiguous.md", "line": 8, "detail": "[[Same Name]] matches 30. Knowledge/Same Name.md, 40. Projects/Same Name.md"},
+    {"category": "ambiguous-link", "path": "30. Knowledge/Ambiguous.md", "line": 8, "detail": "[[Shared Alias]] matches 30. Knowledge/Shared Alias One.md, 30. Knowledge/Shared Alias Two.md"},
+    {"category": "status-location", "path": "30. Knowledge/Archived Here.md", "line": 3, "detail": "status archived outside 99. Archived"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 2, "detail": "type 'foo' is not in the vault CLAUDE.md list"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 3, "detail": "status 'wip' is not in the vault CLAUDE.md list"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 4, "detail": "created '2026/09/24' is not YYYY-MM-DD"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 6, "detail": "tag 'AI' is not lowercase kebab-case"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 8, "detail": "tag 'bad_tag' is not lowercase kebab-case"},
+    {"category": "empty-section", "path": "30. Knowledge/Empty Sections.md", "line": 8, "detail": "## Empty"},
+    {"category": "empty-section", "path": "30. Knowledge/Empty Sections.md", "line": 10, "detail": "## Comment Only"},
+    {"category": "empty-section", "path": "30. Knowledge/Empty Sections.md", "line": 14, "detail": "## Multi Comment"},
+    {"category": "empty-section", "path": "30. Knowledge/Empty Sections.md", "line": 24, "detail": "### Child Without Text"},
+    {"category": "empty-section", "path": "30. Knowledge/Empty Sections.md", "line": 26, "detail": "## Last"},
+    {"category": "frontmatter-missing", "path": "30. Knowledge/Missing Fields.md", "line": 1, "detail": "no created"},
+    {"category": "frontmatter-missing", "path": "30. Knowledge/Missing Fields.md", "line": 1, "detail": "no status"},
+    {"category": "duplicate-name", "path": "30. Knowledge/Same Name.md", "line": 1, "detail": "same name as 40. Projects/Same Name.md"},
+    {"category": "duplicate-name", "path": "30. Knowledge/Shared Alias One.md", "line": 4, "detail": "alias 'Shared Alias' is also an alias of 30. Knowledge/Shared Alias Two.md"},
+    {"category": "duplicate-name", "path": "30. Knowledge/Shared Alias Two.md", "line": 3, "detail": "alias 'Acme' equals the name of 20. Customers/Acme.md"},
+    {"category": "duplicate-name", "path": "30. Knowledge/Shared Alias Two.md", "line": 3, "detail": "alias 'Shared Alias' is also an alias of 30. Knowledge/Shared Alias One.md"},
+    {"category": "duplicate-name", "path": "30. Knowledge/Taken.md", "line": 1, "detail": "same name as 01. Inbox/Taken.md"},
+    {"category": "status-location", "path": "30. Knowledge/Taken.md", "line": 3, "detail": "draft outside 01. Inbox, not moved: 01. Inbox/Taken.md already exists"},
+    {"category": "duplicate-name", "path": "40. Projects/Same Name.md", "line": 1, "detail": "same name as 30. Knowledge/Same Name.md"}
+  ]
+}

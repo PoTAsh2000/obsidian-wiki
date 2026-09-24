@@ -1,0 +1,18 @@
+{
+  "movedToInbox": [
+    {"from": "30. Knowledge/Stray Draft.md", "to": "01. Inbox/Stray Draft.md"}
+  ],
+  "removedDeadLinks": [
+    {"path": "01. Inbox/Stray Draft.md", "line": 8, "deadLink": "[[Gone]]"},
+    {"path": "10. Daily/2026-09-20.md", "line": 3, "deadLink": "[[Daily Missing]]"}
+  ],
+  "placeholderLinks": [],
+  "orphans": [],
+  "findings": [
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 2, "detail": "type 'foo' is not in the vault CLAUDE.md list"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 3, "detail": "status 'wip' is not in the vault CLAUDE.md list"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 4, "detail": "created '2026/09/24' is not YYYY-MM-DD"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 6, "detail": "tag 'AI' is not lowercase kebab-case"},
+    {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Frontmatter.md", "line": 8, "detail": "tag 'bad_tag' is not lowercase kebab-case"}
+  ]
+}
