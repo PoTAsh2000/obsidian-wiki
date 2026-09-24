@@ -10,6 +10,11 @@
       "name": "wiki-save",
       "source": "./plugins/wiki-save",
       "description": "Save a useful answer from the conversation as a draft note in the Inbox of my Obsidian vault"
+    },
+    {
+      "name": "wiki-query",
+      "source": "./plugins/wiki-query",
+      "description": "Answer questions from my Obsidian vault with [[Note]] citations, plus read-only lookups by name, tag, topic and status"
     }
   ]
 }
