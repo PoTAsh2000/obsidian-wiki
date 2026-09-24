@@ -19,6 +19,8 @@ Resolve the vault folder in this order, and stop at the first one that is set:
 2. `OBSIDIAN_VAULT` in the `env` object of `~/.claude/settings.json` (read the file).
 3. Neither is set: ask the user once for the vault path. Show the exact change (`"env": { "OBSIDIAN_VAULT": "<path>" }` added to `~/.claude/settings.json`, keeping everything else) and write it only after their OK. Without an OK, use the path for this run only.
 
+The path is valid when it contains `CLAUDE.md`. If not, say so and ask again.
+
 ## 2. Read the vault rules
 
 Read `CLAUDE.md` in the vault root before anything else, and follow it.

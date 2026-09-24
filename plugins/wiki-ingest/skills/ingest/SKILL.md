@@ -18,15 +18,18 @@ Resolve the vault folder in this order, and stop at the first one that is set:
 2. `OBSIDIAN_VAULT` in the `env` object of `~/.claude/settings.json` (read the file).
 3. Neither is set: ask the user once for the vault path. Show the exact change (`"env": { "OBSIDIAN_VAULT": "<path>" }` added to `~/.claude/settings.json`, keeping everything else) and write it only after their OK. Without an OK, use the path for this run only.
 
+The path is valid when it contains `CLAUDE.md`. If not, say so and ask again.
+
 ## 2. Read the vault rules
 
 Read `CLAUDE.md` in the vault root and follow it: folders, frontmatter schema, allowed `type` values, merge rules, never delete, keep the filename when moving, English without em dashes.
 
 ## 3. Lint the whole vault first
 
-Invoke the skill `wiki-lint:lint` by name with no arguments (never call a lint script by path). This moves stray drafts into the Inbox before ingest selects notes. Keep from its JSON result:
+Invoke the skill `wiki-lint:lint` by name with no arguments (never call a lint script by path). This moves stray drafts into the Inbox before ingest selects notes. If lint reports a usage error (exit code 2), show it and stop. Keep from its result:
 
-- `orphans`: candidates for link rows in the plan.
+- `orphans`: candidates for link rows in the plan. Only this full run gives orphans; the `--files` run in step 7 does not.
+- `findings` for the selected drafts (for example `frontmatter-missing`, `frontmatter-invalid`, `empty-section`): take them into the plan.
 - `placeholderLinks`: never touch these links.
 - `movedToInbox` and `removedDeadLinks`: mention them briefly to the user, as lint's own fixes.
 
@@ -73,7 +76,7 @@ Keep a list of every changed note by its path after the move.
 
 ## 7. Lint the changed notes
 
-Invoke `wiki-lint:lint --files "<path 1>" "<path 2>" ...` with every note changed in step 6, paths from the vault root after the move.
+Invoke `wiki-lint:lint --files "<path 1>" "<path 2>" ...` with every note changed in step 6 (drafts, orphans that got a link, merge targets and archived sources), paths from the vault root after the move, each one quoted. Lint runs straight away and checks stray draft, frontmatter, outgoing dead links, ambiguous links and empty sections for those notes. Skip this step when nothing changed.
 
 ## 8. Report lint's result
 
