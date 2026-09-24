@@ -20,7 +20,7 @@ This file is only loaded while developing inside this repo, never while a skill 
 ## Every skill
 
 - Starts with "read the vault `CLAUDE.md`".
-- Resolves the vault path in this order: `CLAUDE_PLUGIN_OPTION_VAULT_PATH`, then `OBSIDIAN_VAULT` from `env` in `~/.claude/settings.json`, then asks the user once and writes `OBSIDIAN_VAULT` to `settings.json` only after their OK.
+- Resolves the vault path in this order: the plugin option `${user_config.vault_path}` (substituted into skill text; `CLAUDE_PLUGIN_OPTION_VAULT_PATH` does not reach the Bash tool), then `OBSIDIAN_VAULT` from `env` in `~/.claude/settings.json`, then asks the user once and writes `OBSIDIAN_VAULT` to `settings.json` only after their OK.
 - Calls other plugins by skill name (for example `wiki-lint:lint`), never by script path. A skill only knows its own folder through `${CLAUDE_PLUGIN_ROOT}`.
 
 ## Scripts
