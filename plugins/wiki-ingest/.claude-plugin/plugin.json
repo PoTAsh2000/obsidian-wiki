@@ -8,6 +8,7 @@
     "vault_path": {
       "type": "string",
       "title": "Obsidian vault folder",
+      "description": "Full path to the root folder of your Obsidian vault",
       "sensitive": false
     }
   },
