@@ -15,6 +15,11 @@
       "name": "wiki-query",
       "source": "./plugins/wiki-query",
       "description": "Answer questions from my Obsidian vault with [[Note]] citations, plus read-only lookups by name, tag, topic and status"
+    },
+    {
+      "name": "wiki-lint",
+      "source": "./plugins/wiki-lint",
+      "description": "Check my Obsidian vault: move stray drafts to the Inbox, unlink dead links, and report orphans, frontmatter, empty sections, duplicates and old Inbox notes"
     }
   ]
 }
