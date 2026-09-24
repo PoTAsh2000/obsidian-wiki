@@ -14,7 +14,7 @@ First find the vault, then read `<vault>/CLAUDE.md` before anything else. Its ru
 
 Resolve the vault path in this order and stop at the first that gives a folder:
 
-1. Run `echo "$CLAUDE_PLUGIN_OPTION_VAULT_PATH"` in Bash.
+1. The plugin option set at install: `${user_config.vault_path}`. It counts as set only when it shows a real path here, not an empty value or the literal placeholder.
 2. Read `~/.claude/settings.json` and take `env.OBSIDIAN_VAULT`.
 3. Neither is set: ask the user once for the vault folder. Show the exact change to `~/.claude/settings.json` (add `"OBSIDIAN_VAULT": "<path>"` under `env`, keeping everything else). Write it only after their OK. Without an OK, use the path for this run only.
 
