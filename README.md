@@ -1,65 +1,63 @@
 # obsidian-wiki
 
-A Claude Code plugin marketplace with four plugins that keep a personal Obsidian vault tidy.
+A Claude Code plugin marketplace that keeps a personal Obsidian vault tidy. It is inspired by [claude-obsidian](https://github.com/AgriciDaniel/claude-obsidian) (MIT), which builds on Karpathy's LLM Wiki pattern: drop knowledge in an inbox, let Claude file and link it, and query what you already know. All code here is written from scratch; only the ideas are reused (inbox first, plan before apply, read-only query).
 
-Inspired by claude-obsidian (MIT). All code here is written from scratch: only the ideas are reused (inbox first, plan before apply, read-only query). It is recreated locally so the skills follow my own vault rules, stay small, and change only when I change them.
+I recreated it myself for three reasons:
 
-## Why
+- **No native Windows support.** claude-obsidian does not write to a vault from Windows.
+- **The WSL workaround is too cumbersome** for the handful of tools I actually use:
+  - it needs WSL with a Linux distro, just to install the Python engine in there;
+  - I have to run Claude Code inside a WSL terminal whenever I work with the vault.
+- **Easy to use and manage.** Small separate plugins, so I update only what I want, when I want it, without bloat I will never use.
 
-Notes pile up in the Inbox, links break, and knowledge I already have gets rewritten. These skills give every note one path through the vault and let Claude do the tedious parts without ever deleting a note.
+## How this marketplace improves my Obsidian workflow
 
-```
-save  ->  draft in 01. Inbox  ->  ingest  ->  review outside the Inbox  ->  apply  ->  evergreen
-```
+Each plugin gives Claude one clear job in the vault: save an answer, file a draft, check vault health, or answer from my notes. Claude always follows the vault's own `CLAUDE.md` rules, so I never have to explain folders, frontmatter or linking again, and no skill ever deletes a note.
 
-| Plugin | What it does |
-|---|---|
-| `wiki-save` | Saves a useful answer from the conversation as a `draft` note in `01. Inbox` |
-| `wiki-ingest` | Plans and applies moving drafts out of the Inbox (`draft` to `review`); `apply` marks reviewed notes `evergreen` |
-| `wiki-lint` | Checks the whole vault; moves stray drafts back to the Inbox and unlinks dead links, reports everything else |
-| `wiki-query` | Answers questions from my notes, plus fast lookups by name, tag, topic and status. Read-only |
+Together the plugins form a knowledge cycle. Research and writing produce `draft` notes in the Inbox, ingest files them (`review`), apply approves them (`evergreen`), and lint keeps the vault healthy along the way. Query feeds existing knowledge back into new work, so I build on what I already know instead of rewriting it.
 
-`wiki-ingest` depends on `wiki-lint`: installing ingest installs lint too.
+![Obsidian wiki knowledge cycle](assets/obsidian-wiki-cycle.svg)
 
-## Install
+## Install and usage guide
+
+### Install
 
 At user scope, so the skills work in every project:
 
 ```
-/plugin marketplace add <git url of obsidian-wiki>
-/plugin install wiki-ingest@obsidian-wiki     (also installs wiki-lint)
+/plugin marketplace add https://github.com/PoTAsh2000/obsidian-wiki.git
 /plugin install wiki-query@obsidian-wiki
-/plugin install wiki-save@obsidian-wiki
 ```
+
+Install the other plugins the same way: `wiki-save`, `wiki-ingest` and `wiki-lint`.
+
+Some plugins depend on others. `wiki-ingest` calls `wiki-lint` to check notes before and after filing them, so installing `wiki-ingest` installs `wiki-lint` automatically. The other plugins stand on their own.
 
 Each plugin asks for the vault folder (`vault_path`) on install. If that value is not available, the skill falls back to `OBSIDIAN_VAULT` in `env` of `~/.claude/settings.json`, and if that is missing too, asks once and proposes the change.
 
 Auto-update is off by default for third-party marketplaces. Turn it on once: `/plugin`, Marketplaces tab, `obsidian-wiki`, "Enable auto-update". To update right away: `/plugin marketplace update obsidian-wiki`.
 
-## Examples
+### Examples
 
 | Command | What it does |
 |---|---|
-| `/wiki-save:save` | Save the last useful answer as a `draft` (Claude proposes a title) |
-| `/wiki-save:save ACE vs SOP` | Save as a `draft` with a given title |
-| `/wiki-ingest:ingest` | List all `draft` notes, ask which one, then plan it |
+| `/wiki-save:save` | Save the last useful answer as a `draft` in `01. Inbox` (Claude proposes a title) |
+| `/wiki-save:save ACE vs SOP` | Same, with a given title |
+| `/wiki-ingest:ingest` | List all `draft` notes, ask which one, then plan moving it out of the Inbox |
 | `/wiki-ingest:ingest all` | Plan every `draft` note |
 | `/wiki-ingest:apply` | Mark every `review` note as `evergreen` (only runs when typed) |
-| `/wiki-lint:lint` | Full vault check, JSON result |
+| `/wiki-lint:lint` | Full vault check: moves stray drafts, unlinks dead links, reports the rest |
 | `/wiki-lint:lint --files "01. Inbox/"` | Same, for every note in one folder |
 | `/wiki-query:query what is context engineering?` | Answer from my notes with `[[Note]]` citations |
 | `/wiki-query:name context` | Notes whose filename or title contains "context" |
 | `/wiki-query:tag ai tooling` | Notes per tag |
+| `/wiki-query:topic EDI` | Notes per topic |
 | `/wiki-query:status review draft` | Notes per status |
 
 Normal language works too: "save this to my vault", "process my inbox", "check my vault", "what do I already know about EDI mapping?".
 
-## Development
+## Contribution
 
-Installed plugins are copies in the cache, so load them straight from the repo while developing:
+This repo was originally created for my personal use. If you find a bug or want to see a feature, feel free to [open an issue](https://github.com/PoTAsh2000/obsidian-wiki/issues/new/choose) using the bug or feature template. A change will probably only be accepted if it still matches my own use case.
 
-```
-claude --plugin-dir ./plugins/wiki-lint --plugin-dir ./plugins/wiki-ingest
-```
-
-Run the tests before committing (`plugins/wiki-lint/tests/run.sh`, `plugins/wiki-query/tests/run.sh`), then push and run `/plugin marketplace update obsidian-wiki`. Development rules are in `CLAUDE.md`.
+If you like the repo, feel free to give it a star.
