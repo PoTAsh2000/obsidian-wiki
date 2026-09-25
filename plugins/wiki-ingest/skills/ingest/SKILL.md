@@ -42,7 +42,7 @@ Show nothing of lint's result to the user at this point: no summary, no list of 
 
 A note is a candidate only when it is inside `01. Inbox` (not in a subfolder) and its frontmatter has `status: draft`. Notes with another status or no `status` are skipped.
 
-- **No argument:** list every candidate, one path from the vault root per line, and ask which one to process. Continue with the chosen note. No candidates: say so and go to step 9.
+- **No argument:** list every candidate, one path from the vault root per line in backticks, and ask which one to process. Continue with the chosen note. No candidates: say so and go to step 9.
 - **`all`:** every candidate.
 - **A note name:** the candidate whose filename (without `.md`) matches, case-insensitive. If the note exists but is not a `draft` in `01. Inbox`, stop and say which status and folder it has. Not found at all: say so and stop.
 
@@ -110,12 +110,12 @@ Ingest fixes nothing more itself; any further fix is a new ingest run.
 
 ## 9. Final list
 
-Always end with the notes that went from `draft` to `review`, one path from the vault root per line, using the path after the move:
+Always end with the notes that went from `draft` to `review`, one path from the vault root per line in backticks, using the path after the move. The backticks stop Markdown from reading a folder number like `30.` as a numbered list:
 
 ```
 Moved from draft to review:
-- 30. Knowledge/Context Engineering.md
-- 20. Customers/RBH.md
+- `30. Knowledge/Context Engineering.md`
+- `20. Customers/RBH.md`
 ```
 
 When nothing changed: `No notes moved from draft to review.`
