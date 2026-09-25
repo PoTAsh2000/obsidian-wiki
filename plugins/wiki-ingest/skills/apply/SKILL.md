@@ -33,7 +33,7 @@ Read `CLAUDE.md` in the vault root before anything else, and follow it.
 What apply may change: only the frontmatter line `status: review`, into `status: evergreen`. No other edit, no move, no link change, no extra plan or confirm. Never delete a note.
 
 - **No argument:** Grep the vault for `^status:\s*["']?review["']?\s*$` in `*.md` files (every folder, skip dot folders). Keep only hits inside the frontmatter (the block between the first two `---` lines).
-- **A note name:** find the note by filename (without `.md`), case-insensitive, anywhere in the vault. If there is no match, say so and stop. If several notes match, list their paths and ask which one. Read its frontmatter status. If it is not `review`, stop and say which status it has (or that it has none), and change nothing.
+- **A note name:** find the note by filename (without `.md`), case-insensitive, anywhere in the vault. If there is no match, say so and stop. If several notes match, list their paths in backticks and ask which one. Read its frontmatter status. If it is not `review`, stop and say which status it has (or that it has none), and change nothing.
 
 ## 4. Apply
 
@@ -41,11 +41,11 @@ For each note, use Edit to replace the frontmatter `status` line with `status: e
 
 ## 5. Report
 
-End with the paths from the vault root, one per line:
+End with the paths from the vault root, one per line in backticks. The backticks stop Markdown from reading a folder number like `30.` as a numbered list:
 
 ```
 Moved from review to evergreen:
-- 30. Knowledge/Context Engineering.md
+- `30. Knowledge/Context Engineering.md`
 ```
 
 When nothing changed: `No notes moved from review to evergreen.`
