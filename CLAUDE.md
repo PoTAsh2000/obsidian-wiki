@@ -30,6 +30,7 @@ This file is only loaded while developing inside this repo, never while a skill 
 - Exception: `lint.sh` changes files without an approved dry-run first, because the user chose that for lint. It still has `--dry-run`, used by the tests.
 - A change to `lint.sh` needs `plugins/wiki-lint/tests/run.sh` to pass.
 - A change to `find.sh` needs `plugins/wiki-query/tests/run.sh` to pass.
+- A change to `plugins/wiki-query/skills/query/scripts/` needs `plugins/wiki-query/tests/query/run.sh` to pass. These scripts follow the support-script rules (exit 0 on success, 1 system, 2 usage, 3 user error) and are called through `${CLAUDE_SKILL_DIR}`.
 - Only wiki-lint and wiki-query have `scripts/` and `tests/`. Other plugins get them only when a real need shows up.
 
 ## Versioning
