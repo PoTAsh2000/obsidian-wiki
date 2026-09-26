@@ -22,7 +22,7 @@ This file is only loaded while developing inside this repo, never while a skill 
 
 - Starts with "read the vault `CLAUDE.md`".
 - Reads the vault path from `~/.claude/obsidian-wiki/vault-path`. Missing or empty: replies `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stops. Never asks for the path and never writes it.
-- Calls other plugins by skill name (for example `wiki-lint:lint`), never by script path. A skill only knows its own folder through `${CLAUDE_PLUGIN_ROOT}`.
+- Calls other plugins by skill name (for example `wiki-lint:lint`), never by script path. A skill only knows its own folder through `${CLAUDE_PLUGIN_ROOT}` or `${CLAUDE_SKILL_DIR}`.
 
 ## Scripts
 
@@ -30,6 +30,7 @@ This file is only loaded while developing inside this repo, never while a skill 
 - Exception: `lint.sh` changes files without an approved dry-run first, because the user chose that for lint. It still has `--dry-run`, used by the tests.
 - A change to `lint.sh` needs `plugins/wiki-lint/tests/run.sh` to pass.
 - A change to `find.sh` needs `plugins/wiki-query/tests/run.sh` to pass.
+- A change to `wiki-query/skills/topic/scripts/topic.sh` or `find.sh` needs `plugins/wiki-query/tests/topic.sh` to pass.
 - Only wiki-lint and wiki-query have `scripts/` and `tests/`. Other plugins get them only when a real need shows up.
 
 ## Versioning

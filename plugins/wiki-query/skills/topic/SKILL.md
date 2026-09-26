@@ -2,38 +2,33 @@
 name: topic
 description: List notes in the user's Obsidian vault by frontmatter topic, one block per topic. Use when the user asks which of their notes have a topic, for example "which notes in my vault have topic EDI", "list my AI notes by topic". Do not use for general questions about a topic that do not mention the vault, Obsidian or their notes.
 argument-hint: "<topic>..."
+model: haiku
+effort: low
+allowed-tools: Bash(bash "${CLAUDE_SKILL_DIR}/scripts/topic.sh" *)
 ---
 
 # Find notes by topic
 
-Read-only. Lists matching notes in the vault and changes nothing.
+Read-only. Lists matching notes in the vault and changes nothing. The script reads the vault path configured by `wiki-vault`; never ask for the path and never write it.
 
-## 1. Find the vault
+## 1. Read the vault CLAUDE.md
 
-Read the vault path configured by `wiki-vault`:
+The vault `CLAUDE.md`, printed by the script (empty when the vault is not set up). Its rules win over this skill on any difference, except that this skill never writes to the vault:
 
-```bash
-cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
-```
+!`bash "${CLAUDE_SKILL_DIR}/scripts/topic.sh" --inject --rules`
 
-- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
-- The folder does not contain `CLAUDE.md`: say so, point to `/wiki-vault:overwrite`, and stop.
+## 2. Lookup result
 
-Never ask for the path and never write it; only `wiki-vault` does that.
+!`bash "${CLAUDE_SKILL_DIR}/scripts/topic.sh" --inject $ARGUMENTS`
 
-## 2. Read the vault CLAUDE.md
+## 3. Reply
 
-Read `<vault>/CLAUDE.md` before anything else in the vault. Its rules win over this skill on any difference, except that this skill never writes to the vault.
+- Result is `ERROR: no topic given`: ask the user for one or more topics, separated by spaces. Then run exactly `bash "${CLAUDE_SKILL_DIR}/scripts/topic.sh" <topic>...` and reply as below with its output.
+- Result is any other `ERROR: <text>`: reply with `<text>` exactly and stop. Do not retry.
+- Otherwise show the result exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, do not open the notes, and do not run anything else. `Nothing found.` is a normal result.
 
-## 3. Run the lookup
+If a run of `topic.sh` exits non-zero:
 
-Run this in Bash, with the vault path from step 1:
-
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/find.sh" --vault "<vault>" topic $ARGUMENTS
-```
-
-- Show the output exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes.
-- Exit 0 means something was found, 1 means nothing was found (the output says "Nothing found."). Both are normal results.
-- Exit 2 is a usage error: show the message and the usage line from stderr.
-- No arguments given: ask for one or more topics, separated by spaces, then run the command.
+- Exit 3 (stderr `USER ERROR: <text>`): reply with `<text>` exactly and stop. Do not retry.
+- Exit 2 (bad call): run `bash "${CLAUDE_SKILL_DIR}/scripts/topic.sh" --help`, fix the call once. If it still fails, show the stderr line and stop.
+- Exit 1 (system error): show the stderr line and stop.
