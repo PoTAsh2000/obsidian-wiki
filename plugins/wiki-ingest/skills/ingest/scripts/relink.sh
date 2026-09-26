@@ -20,6 +20,8 @@ arguments:
 output (stdout):
   changed: <path>    one line per note that was rewritten
   links: <n>         number of links rewritten (0 on a second run)
+  skipped-ambiguous: <n>   bare links left alone because several notes have
+                           the old filename; the model reports them
 
 exit codes:
   0  done (also when nothing had to change)
@@ -53,15 +55,20 @@ cd "$vault"
 
 notes=()
 while IFS= read -r -d '' f; do notes+=("${f#./}"); done < <(find . -mindepth 1 -name '.*' -prune -o -type f -name '*.md' -print0 | sort -z)
-found=0
-for f in "${notes[@]}"; do n=${f##*/}; n=${n%.md}; [ "${n,,}" = "${new,,}" ] && found=1 && break; done
+found=0 twins=0
+for f in "${notes[@]}"; do
+  n=${f##*/}; n=${n%.md}
+  [ "${n,,}" = "${new,,}" ] && found=1
+  [ "${n,,}" = "${old,,}" ] && twins=$((twins + 1))
+done
 [ "$found" = 1 ] || user "no note named \"$new\" in the vault, create or pick the merge target first"
+amb=0; [ "$twins" -gt 1 ] && amb=1
 
-total=0
+total=0 skipped=0
 for f in "${notes[@]}"; do
   grep -qiF -- "$old" "$f" || continue
   tmp=$(mktemp "$f.XXXXXX") || sys "cannot create a temp file next to $f"
-  count=$(OLD="$old" OLDPATH="$oldpath" NEW="$new" awk -v BINMODE=3 -v OUT="$tmp" '
+  result=$(OLD="$old" OLDPATH="$oldpath" NEW="$new" awk -v BINMODE=3 -v OUT="$tmp" -v AMB="$amb" '
     BEGIN { o = tolower(ENVIRON["OLD"]); op = tolower(ENVIRON["OLDPATH"]); nw = ENVIRON["NEW"] }
     {
       line = $0
@@ -72,12 +79,15 @@ for f in "${notes[@]}"; do
         res = res substr(line, 1, RSTART - 1)
         tgt = substr(line, RSTART + 2, RLENGTH - 3); end = substr(line, RSTART + RLENGTH - 1, 1)
         t = tgt; gsub(/^[ \t]+|[ \t]+$/, "", t); sub(/\.md$/, "", t); sub(/^\//, "", t); t = tolower(t)
-        if ((index(t, "/") ? t == op : t == o)) { res = res "[[" nw end; n++ } else res = res substr(line, RSTART, RLENGTH)
+        hit = index(t, "/") ? t == op : t == o
+        if (hit && AMB && !index(t, "/")) { hit = 0; s++ }
+        if (hit) { res = res "[[" nw end; n++ } else res = res substr(line, RSTART, RLENGTH)
         line = substr(line, RSTART + RLENGTH)
       }
       print res line > OUT
     }
-    END { close(OUT); print n + 0 }' "$f") || { rm -f "$tmp"; sys "cannot rewrite $f"; }
+    END { close(OUT); print n + 0, s + 0 }' "$f") || { rm -f "$tmp"; sys "cannot rewrite $f"; }
+  count=${result% *}; skipped=$((skipped + ${result#* }))
   if [ "$count" -gt 0 ]; then
     mv -f "$tmp" "$f" || { rm -f "$tmp"; sys "cannot write $f"; }
     echo "changed: $f"; total=$((total + count))
@@ -86,3 +96,4 @@ for f in "${notes[@]}"; do
   fi
 done
 echo "links: $total"
+[ "$skipped" = 0 ] || echo "skipped-ambiguous: $skipped"

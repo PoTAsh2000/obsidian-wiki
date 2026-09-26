@@ -100,7 +100,7 @@ Finish each note completely before starting the next, without asking the user an
 3. Apply the approved orphan rows for this note.
 4. For an approved merge, in this order (with several targets, links go to the first one):
    1. Add the source's content to the target and the source's title to the target's `aliases` (Edit).
-   2. Change links to the source into links to the target, in every note: `bash "${CLAUDE_SKILL_DIR}/scripts/relink.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<target name>"`. It prints one `changed:` line per rewritten note.
+   2. Change links to the source into links to the target, in every note: `bash "${CLAUDE_SKILL_DIR}/scripts/relink.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<target name>"`. It prints one `changed:` line per rewritten note, and `skipped-ambiguous: <n>` when bare links were left alone because several notes share the source's filename; list those under "Still to consider" in step 7.
    3. Archive the source, never delete it: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<archive folder>" archived`.
    4. Set the target to review in place: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "<target path>" "<target folder>" review`.
 

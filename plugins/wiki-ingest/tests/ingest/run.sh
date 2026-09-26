@@ -2,6 +2,7 @@
 # Tests for the wiki-ingest:ingest scripts. Quiet on success, exit 1 on any failure.
 # Write tests run on a temp copy of the fixture vault with a temp HOME.
 set -uo pipefail
+case "${1:-}" in -h|--help) echo "usage: run.sh   (no arguments; exit 0 all pass, 1 any failure)"; exit 0 ;; esac
 here=$(cd "$(dirname "$0")" && pwd)
 scripts="$here/../../skills/ingest/scripts"
 fixture="$here/fixture-vault"
@@ -192,8 +193,25 @@ errline relink-same "SYSTEM ERROR:"
 run relink-bad-name 2 "" bash "$scripts/relink.sh" --vault "$tmp/v" "A|B" ACE
 errline relink-bad-name "SYSTEM ERROR:"
 run relink-args 2 "" bash "$scripts/relink.sh" --vault "$tmp/v" ACE
-
 errline relink-args "SYSTEM ERROR:"
+# two notes named Tokens: a bare [[Tokens]] is ambiguous and stays, the path link is rewritten
+printf -- '# Links\n\n[[Tokens]] and [[01. Inbox/Tokens|t]]\n' > "$tmp/v/40. Projects/Links.md"
+run relink-ambiguous 0 "changed: 40. Projects/Links.md
+links: 1
+skipped-ambiguous: 1" bash "$scripts/relink.sh" --vault "$tmp/v" "01. Inbox/Tokens.md" ACE
+same "$tmp/v/40. Projects/Links.md" <(printf -- '# Links\n\n[[Tokens]] and [[ACE|t]]\n') relink-ambiguous
+
+# select.sh caps the note index by size: each line is 26 chars, limit 100 gives 4 lines
+mkdir -p "$tmp/big/30. Knowledge"
+for i in 1 2 3 4 5 6; do : > "$tmp/big/30. Knowledge/N$i.md"; done
+run select-cap 0 "candidates: 0
+note: 30. Knowledge/N1.md
+note: 30. Knowledge/N2.md
+note: 30. Knowledge/N3.md
+note: 30. Knowledge/N4.md
+notes: 6
+index: first 4 of 6 notes listed (output limit), search the vault for the rest" env INGEST_INDEX_LIMIT=100 bash "$scripts/select.sh" --vault "$tmp/big"
+run select-cap-bad 2 "" env INGEST_INDEX_LIMIT=x bash "$scripts/select.sh" --vault "$tmp/big"
 
 # system errors: required tools missing (exit 1)
 bashbin=$(command -v bash)
@@ -201,6 +219,8 @@ for s in select promote relink; do
   run "sys-$s" 1 "" env PATH=/nonexistent "$bashbin" "$scripts/$s.sh" --vault "$tmp/v" a b c
   errline "sys-$s" "SYSTEM ERROR: $s.sh: .* not installed"
 done
+run sys-context 1 "" env HOME="$tmp/home" PATH=/nonexistent "$bashbin" "$scripts/context.sh"
+errline sys-context "SYSTEM ERROR: context.sh: .* not installed"
 
 after=$(cd "$fixture" && find . -type f -exec md5sum {} + | sort)
 [ "$before" = "$after" ] || { echo "FAIL fixture vault changed"; fail=1; }

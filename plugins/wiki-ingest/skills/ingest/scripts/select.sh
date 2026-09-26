@@ -21,7 +21,8 @@ output (stdout):
   candidates: <n>
   note: <path> [| status: <s>] [| aliases: <a>, ...] [| title: <t>]   every other note (dot folders skipped)
   notes: <n>
-  index: ...     only when the vault has more than 400 other notes (the rest is not listed)
+  index: first <k> of <n> notes listed ...   only when the index passes about 20000
+                 characters (env INGEST_INDEX_LIMIT); the rest is not listed
 
 exit codes:
   0  listed (candidates: 0 is a normal result)
@@ -54,13 +55,14 @@ cd "$vault"
 records=$(find . -mindepth 1 -name '.*' -prune -o -type f -name '*.md' ! -path ./CLAUDE.md -print0 | xargs -0 -r awk '
   function clean(v) { gsub(/^[ \t]+|[ \t]+$/, "", v); gsub(/^["\x27]|["\x27]$/, "", v); return v }
   function addalias(v) { v = clean(v); if (v != "") al = al (al == "" ? "" : ", ") v }
-  function flush() { if (path != "") print path "\t" st "\t" al "\t" ti }
+  BEGINFILE {
+    path = FILENAME; sub(/^\.\//, "", path)
+    st = ""; al = ""; ti = ""; infm = 0; titled = 0; fence = 0; inal = 0
+  }
+  ENDFILE { print path "\t" st "\t" al "\t" ti }
   { sub(/\r$/, "") }
   FNR == 1 {
     sub(/^\xef\xbb\xbf/, "")
-    flush()
-    path = FILENAME; sub(/^\.\//, "", path)
-    st = ""; al = ""; ti = ""; infm = 0; titled = 0; fence = 0; inal = 0
     if ($0 ~ /^---[ \t]*$/) { infm = 1; next }
   }
   infm {
@@ -80,11 +82,12 @@ records=$(find . -mindepth 1 -name '.*' -prune -o -type f -name '*.md' ! -path .
   titled { next }
   /^[ \t]*(```|~~~)/ { fence = !fence; next }
   !fence && /^# / { ti = clean(substr($0, 3)); titled = 1 }
-  END { flush() }
 ' | sort) || sys "cannot read the notes in $vault"
 
 want=${arg%.md}; want=${want##*/}
-out=$(ARG="$arg" WANT="$want" awk -F '\t' '
+limit=${INGEST_INDEX_LIMIT:-20000}
+[[ "$limit" =~ ^[0-9]+$ ]] || bad "INGEST_INDEX_LIMIT must be a number"
+out=$(ARG="$arg" WANT="$want" awk -F '\t' -v LIMIT="$limit" '
   function name(p) { sub(/.*\//, "", p); sub(/\.md$/, "", p); return p }
   function folder(p) { if (p !~ /\//) return "vault root"; sub(/\/[^\/]*$/, "", p); return p }
   $1 == "" { next }
@@ -112,17 +115,18 @@ out=$(ARG="$arg" WANT="$want" awk -F '\t' '
       print line; c++
     }
     print "candidates: " c
-    k = 0
+    k = 0; shown = 0; size = 0
     for (i = 1; i <= n; i++) if (!pick[i]) {
-      if (k >= 400) { k++; cut = 1; continue }
+      k++
+      if (size > LIMIT) continue
       line = "note: " p[i]
       if (s[i] != "") line = line " | status: " s[i]
       if (a[i] != "") line = line " | aliases: " a[i]
       if (t[i] != "" && t[i] != name(p[i])) line = line " | title: " t[i]
-      print line; k++
+      print line; shown++; size += length(line) + 1
     }
     print "notes: " k
-    if (cut) print "index: only the first 400 notes are listed, search the vault for the rest"
+    if (shown < k) print "index: first " shown " of " k " notes listed (output limit), search the vault for the rest"
   }' <<< "$records") && rc=0 || rc=$?
 case $rc in
   0) printf '%s\n' "$out" ;;
