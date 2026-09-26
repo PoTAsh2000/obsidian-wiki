@@ -1,0 +1,8 @@
+terms: edi, mapping
+matches: 5
+shown: 5
+- 30. Knowledge/EDI Mapping.md | score: 65 | status: evergreen | terms: 2/2 | in: name,title,alias,tag,topic,body:5
+- 99. Archived/Old Mapping.md | score: 22 | status: archived | terms: 1/2 | in: name,title,body:2
+- 40. Projects/Empty EDI.md | score: 10 | status: none | terms: 1/2 | in: name
+- 40. Projects/proj-orders.md | score: 7 | status: draft | terms: 2/2 | in: topic,body:3
+- Loose Note.md | score: 1 | status: none | terms: 1/2 | in: body:1
