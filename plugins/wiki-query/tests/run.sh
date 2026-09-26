@@ -47,4 +47,6 @@ code usage-no-vault 2 bash "$find" tag ai
 after=$(cd "$vault" && find . -type f -exec md5sum {} + | sort)
 [ "$before" = "$after" ] || { echo "FAIL fixture vault changed"; fail=1; }
 
+bash "$here/name-skill.sh" || fail=1
+
 exit $fail
