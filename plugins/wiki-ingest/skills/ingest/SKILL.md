@@ -24,7 +24,7 @@ Never ask for the vault path and never write it; only `wiki-vault` does that.
 
 ## 2. Lint the whole vault first
 
-Invoke the skill `wiki-lint:lint` by name with no arguments (never call a lint script by path). This moves stray drafts into the Inbox before ingest selects notes. If lint reports a usage error (exit code 2), show it and stop.
+Invoke the skill `wiki-lint:lint` by name with no arguments (never call a lint script by path). This moves stray drafts into the Inbox before ingest selects notes. If lint stops with an error instead of a result (a usage, `SYSTEM ERROR:` or `USER ERROR:` line), show it and stop.
 
 Show nothing of lint's result to the user at this point: no summary, no list of fixes or findings. Its data only feeds the plan. Keep from its result:
 
@@ -106,7 +106,7 @@ Finish each note completely before starting the next, without asking the user an
 
    Exit 3 in any of these steps: stop this merge (do not run the next merge steps), leave the source where it is, and report the error text in step 7.
 
-Keep a list of every changed note by its path after the move: `path:` lines, `changed:` lines and the orphans you edited.
+Keep a list of every changed note by its path after the move: `path:` lines, `changed:` lines and the orphans you edited. A `changed:` note that was moved later in this step is listed by its new `path:`.
 
 ## 6. Lint the changed notes
 
