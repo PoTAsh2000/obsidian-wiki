@@ -30,7 +30,8 @@ This file is only loaded while developing inside this repo, never while a skill 
 - Exception: `lint.sh` changes files without an approved dry-run first, because the user chose that for lint. It still has `--dry-run`, used by the tests.
 - A change to `lint.sh` needs `plugins/wiki-lint/tests/run.sh` to pass.
 - A change to `find.sh` needs `plugins/wiki-query/tests/run.sh` to pass.
-- Only wiki-lint and wiki-query have `scripts/` and `tests/`. Other plugins get them only when a real need shows up.
+- A change to wiki-vault `delete.sh` needs `plugins/wiki-vault/skills/delete/tests/run.sh` to pass.
+- Only wiki-lint, wiki-query and the wiki-vault `delete` skill have `scripts/` and `tests/`. Other plugins and skills get them only when a real need shows up.
 
 ## Versioning
 
