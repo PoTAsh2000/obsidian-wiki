@@ -2,71 +2,53 @@
 name: save
 description: Save a useful answer or insight from the current conversation as a new draft note in the user's Obsidian vault Inbox. Use when the user says "save this to my vault", "save this to Obsidian", "put this in my notes" or "add this to my wiki". Do not use for general save requests about code, files, commits, settings or memory that do not mention the vault, Obsidian or notes.
 argument-hint: "[title]"
+allowed-tools: Bash(bash ${CLAUDE_SKILL_DIR}/scripts/*), Write, Read, Grep, Glob
 ---
 
 # Save to the vault
 
-Saves one useful answer from this conversation as exactly one new `draft` note in `01. Inbox`. It never changes any other note, never overwrites a file and never deletes anything.
+Saves one useful answer from this conversation as exactly one new `draft` note in `01. Inbox`, or appends it to an existing Inbox draft when the user picks that. It never changes any other note, never overwrites a file and never deletes a note. `save.sh` enforces this.
 
-## 1. Find the vault
+## 1. Read the vault CLAUDE.md
 
-Read the vault path configured by `wiki-vault`:
+Context gathered by `gather.sh` (vault path, today, a free draft file path, existing topics, then the vault `CLAUDE.md`):
 
-```bash
-cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
-```
+!`bash ${CLAUDE_SKILL_DIR}/scripts/gather.sh`
 
-- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
-- The folder does not contain `CLAUDE.md` or a `01. Inbox` folder: say so, point to `/wiki-vault:overwrite`, and stop.
+- A line starting with `ERROR:` above: reply with the text after `ERROR: ` exactly and stop. Never ask for the vault path and never write it; only `wiki-vault` does that.
+- Otherwise read the vault `CLAUDE.md` above first. Its rules and frontmatter schema win over this skill on any difference, except that this skill only ever creates a `draft` note in `01. Inbox`.
 
-Never ask for the path and never write it; only `wiki-vault` does that.
+## 2. Pick the content
 
-## 2. Read the vault CLAUDE.md
+Take only the useful answer or insight the user wants to keep, usually the last substantial answer. Not the transcript, not the back-and-forth. Rewrite it as a standalone note in short sections. English, no em dashes.
 
-Read `<vault>/CLAUDE.md` before anything else in the vault. Its rules and frontmatter schema win over this skill on any difference, except that this skill only ever creates a `draft` note in `01. Inbox`.
-
-## 3. Pick the content
-
-Take only the useful answer or insight the user wants to keep, usually the last substantial answer. Not the transcript, not the back-and-forth. Rewrite it as a standalone note: a `# <Title>` heading, then the content in short sections. English, no em dashes.
-
-## 4. Pick the title
+## 3. Pick the title
 
 - Title given as argument (`$ARGUMENTS`): use it.
-- No title: propose one short title and ask the user to confirm or change it before writing.
-- The filename is `<Title>.md`. Replace characters that are not allowed in filenames or break Obsidian links (`\ / : * ? " < > | # ^ [ ]`) with a space or dash, and tell the user if you did.
+- No title: propose one short title and ask the user to confirm or change it before saving.
 
-## 5. Check for an existing file
+## 4. Write the draft file
 
-Look for `<vault>/01. Inbox/<Title>.md`, case-insensitive (Windows treats `Tokens.md` and `tokens.md` as the same file). Also search the whole vault for a note with the same filename, since links use the shortest form `[[Title]]` and a duplicate name makes them ambiguous.
+Use the Write tool on the `draft_file` path from step 1 (a temp file, not in the vault). Content:
 
-- **No file with that name anywhere:** go to step 6.
-- **It exists in `01. Inbox` with `status: draft`:** never overwrite. Offer two choices: append to it, or save under another title (propose one). Append only after the user picks it: add the new content at the end under a `## <YYYY-MM-DD>` heading. Do not touch its frontmatter or existing text.
-- **Any other case** (a different status, no status, or a note with that name in another folder): do not append and do not overwrite. Say which note and status it is, propose a different title, and go back to step 5 with that title.
+- Frontmatter with every property the vault `CLAUDE.md` requires, in its order. `status: draft` always. Dates are `today`. `type` only from the allowed values; if none fits, use `knowledge` and mention it. `topic`: reuse one from `topics` when it fits. Tags lowercase kebab-case. Put this session in the sources property, for example `claude session <today>`.
+- `related`: only notes that really relate. Find candidates with Grep/Glob on filenames, titles and `aliases` in the vault; never open or edit them beyond reading. `[]` when none. Link them in the body with `[[Note]]` where it helps.
+- Then the body. No `# Title` heading: `save.sh` adds it from the title.
 
-## 6. Write the note
+## 5. Save
 
-Create the file with the Write tool, only after step 5 found no file. Frontmatter, following the vault schema:
-
-```yaml
----
-type: knowledge
-topic: AI
-aliases: []
-tags: [ai, tooling]
-status: draft
-created: YYYY-MM-DD
-related: ["[[Existing Note]]"]
-source: claude session YYYY-MM-DD
----
+```bash
+bash ${CLAUDE_SKILL_DIR}/scripts/save.sh '<vault>' '<Title>' '<draft_file>'
 ```
 
-- `type`: one of the allowed values in the vault `CLAUDE.md`. Never invent a new one; if none fits, use `knowledge` and mention it.
-- `topic`: the main topic, reuse an existing topic from the vault when one fits.
-- `tags`: lowercase kebab-case.
-- `status`: always `draft`, nothing else.
-- `created` and the `source` date: today, from `date +%F`.
-- `related`: existing notes that are really related. Find them by searching filenames, titles and `aliases` in the vault. Only link notes that exist; use `[]` when there are none. Link them in the body with `[[Note]]` where it helps. Never edit those notes.
+Keep the single quotes; write a `'` inside a value as `'\''`. Do not fix forbidden filename characters yourself, `save.sh` does that.
 
-## 7. Report
+- Exit 0: go to step 6.
+- Exit 3, `appendable: yes` (a draft of that name is in `01. Inbox`): offer two choices, append to it or save under another title (propose one). Only after the user picks append, run the same command with `--append` right after `save.sh`. It adds the body under a `## <today>` heading and does not touch the existing frontmatter or text. Another title: rerun step 5 with it.
+- Exit 3, `appendable: no`: a note with that name exists elsewhere, with another status or more than once. Say which notes (`exists:`) and their `status:`, propose a different title and rerun step 5 with it once the user agrees. Any other exit 3: report the error to the user and stop.
+- Exit 2: fix the call or the draft file as the error says (for example remove a link to a note that does not exist), then rerun once. Check `--help` if unsure. Still failing: report the error and stop.
+- Exit 1: report the error and stop.
 
-One line with the path from the vault root, for example `Saved as draft: 01. Inbox/ACE vs SOP.md`, or `Appended to draft: 01. Inbox/ACE vs SOP.md`. Mention `/wiki-ingest:ingest` to process it later.
+## 6. Report
+
+One line with the path from the vault root: `Saved as draft: <saved path>` or `Appended to draft: <appended path>`. If `renamed: yes`, say that characters not allowed in filenames were replaced. Mention `/wiki-ingest:ingest` to process it later.
