@@ -2,38 +2,37 @@
 name: name
 description: List notes in the user's Obsidian vault whose filename or title contains a text, falling back to aliases. Use when the user asks to find or look up a note by name in their vault or notes, for example "which note in my vault is called context", "find my note about RBH". Do not use for general questions that do not mention the vault, Obsidian or their notes.
 argument-hint: "<text>"
+model: haiku
+effort: low
+allowed-tools:
+  - Bash(bash "${CLAUDE_PLUGIN_ROOT}/skills/name/scripts/gather.sh")
+  - Bash(bash "${CLAUDE_PLUGIN_ROOT}/skills/name/scripts/name.sh" *)
 ---
 
 # Find notes by name
 
-Read-only. Lists matching notes in the vault and changes nothing.
+Read-only. Lists matching notes in the vault and changes nothing. Never write to the vault, never ask for the vault path and never write it; only `wiki-vault` does that.
 
-## 1. Find the vault
+## 1. Vault and vault CLAUDE.md
 
-Read the vault path configured by `wiki-vault`:
+!`bash "${CLAUDE_PLUGIN_ROOT}/skills/name/scripts/gather.sh"`
 
-```bash
-cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
-```
+- If the line above starts with `ERROR:`, reply with the text after `ERROR: ` exactly and stop.
+- Otherwise it shows the vault path and the vault `CLAUDE.md`, which you have now read. Its rules win over this skill on any difference, except that this skill never writes to the vault.
 
-- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
-- The folder does not contain `CLAUDE.md`: say so, point to `/wiki-vault:overwrite`, and stop.
+## 2. Run the lookup
 
-Never ask for the path and never write it; only `wiki-vault` does that.
+Search text: `$ARGUMENTS`
 
-## 2. Read the vault CLAUDE.md
-
-Read `<vault>/CLAUDE.md` before anything else in the vault. Its rules win over this skill on any difference, except that this skill never writes to the vault.
-
-## 3. Run the lookup
-
-Run this in Bash, with the vault path from step 1:
+- Search text empty: ask the user for the text to search, then run the command below with it.
+- Otherwise run exactly this Bash command, with the search text in double quotes (escape `"`, `$` and backticks in it with a backslash):
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/find.sh" --vault "<vault>" name "$ARGUMENTS"
+bash "${CLAUDE_PLUGIN_ROOT}/skills/name/scripts/name.sh" -- "<search text>"
 ```
 
-- Show the output exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes.
-- Exit 0 means something was found, 1 means nothing was found (the output says "Nothing found."). Both are normal results.
-- Exit 2 is a usage error: show the message and the usage line from stderr.
-- No arguments given: ask for the text to search, then run the command.
+## 3. Report
+
+- Exit 0: show stdout exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes. `Nothing found.` is a normal result.
+- Exit 3 (`USER ERROR:`): reply with the text after `USER ERROR: ` exactly and stop.
+- Exit 1 or 2 (`SYSTEM ERROR:`): fix the call once if the message shows how (run `name.sh --help` for usage), otherwise show the error line and stop.
