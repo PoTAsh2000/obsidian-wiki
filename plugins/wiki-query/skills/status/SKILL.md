@@ -2,38 +2,32 @@
 name: status
 description: List notes in the user's Obsidian vault by frontmatter status (draft, review, evergreen, archived), one block per status. Use when the user asks which of their notes have a status, for example "which notes in my vault are still in review", "list my draft notes". Read-only, never use it to change a status.
 argument-hint: "<status>..."
+model: haiku
+effort: low
+allowed-tools:
+  - Bash(bash "${CLAUDE_SKILL_DIR}/scripts/status.sh")
+  - Bash(bash "${CLAUDE_SKILL_DIR}/scripts/status.sh" *)
 ---
 
 # Find notes by status
 
-Read-only. Lists matching notes in the vault and changes nothing.
+Read-only. Lists matching notes in the vault and changes nothing. Never write to the vault and never write the vault path; only `wiki-vault` does that.
 
-## 1. Find the vault
+The script below already read the vault path from `~/.claude/obsidian-wiki/vault-path`, read the vault `CLAUDE.md` and ran the lookup:
 
-Read the vault path configured by `wiki-vault`:
+!`bash "${CLAUDE_SKILL_DIR}/scripts/status.sh" "$ARGUMENTS"`
 
-```bash
-cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
-```
+## What to do
 
-- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
-- The folder does not contain `CLAUDE.md`: say so, point to `/wiki-vault:overwrite`, and stop.
+1. Read the vault `CLAUDE.md` above, between `--- vault CLAUDE.md ---` and `--- end CLAUDE.md ---`. Its rules win over this skill on any difference, except that this skill never writes to the vault.
+2. Output starts with `ERROR: Vault path is missing.`, `ERROR: Vault folder not found` or `ERROR: The vault folder`: reply with the text after `ERROR: ` exactly, and stop.
+3. Output is `ERROR: no status given`: if arguments were passed to this skill, run the command in step 5 with them. Otherwise ask for one or more statuses, separated by spaces, then run the command in step 5.
+4. Output starts with `ERROR: invalid status`: show that line to the user, ask for a corrected status, then run the command in step 5.
+5. Command, only for steps 3 and 4:
 
-Never ask for the path and never write it; only `wiki-vault` does that.
+   ```bash
+   bash "${CLAUDE_SKILL_DIR}/scripts/status.sh" <status>...
+   ```
 
-## 2. Read the vault CLAUDE.md
-
-Read `<vault>/CLAUDE.md` before anything else in the vault. Its rules win over this skill on any difference, except that this skill never writes to the vault.
-
-## 3. Run the lookup
-
-Run this in Bash, with the vault path from step 1:
-
-```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/find.sh" --vault "<vault>" status $ARGUMENTS
-```
-
-- Show the output exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes.
-- Exit 0 means something was found, 1 means nothing was found (the output says "Nothing found."). Both are normal results.
-- Exit 2 is a usage error: show the message and the usage line from stderr.
-- No arguments given: ask for one or more statuses, separated by spaces, then run the command.
+   Handle its output with steps 1 to 6. If it exits 1 or 2, show its stderr line to the user and stop; do not retry.
+6. Otherwise show every line after `--- result ---` exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes. `found: no` (the result says "Nothing found.") is a normal result, not an error.
