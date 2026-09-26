@@ -2,6 +2,7 @@
 name: ingest
 description: Processes draft notes in the Obsidian vault Inbox (01. Inbox) after an approved plan - fixes frontmatter, adds links, picks a destination folder or merge, moves them out of the Inbox and sets status review. Use when the user asks to process, ingest or sort their inbox or a draft note in their vault.
 argument-hint: "[all | note name]"
+allowed-tools: Bash(bash "${CLAUDE_SKILL_DIR}/scripts/*)
 ---
 
 # wiki-ingest:ingest
@@ -10,52 +11,52 @@ Arguments: `$ARGUMENTS`
 
 What ingest may change: only notes with `status: draft` inside `01. Inbox` (edit them, move them out, set `status: review`), plus link rows and merges the user approved in the plan. Never delete a note, never set `evergreen`, never archive an orphan.
 
-## 1. Vault path
+Scripts: deterministic work runs in the scripts below; you only do the judgment (plan, content edits, summary). Every script has `--help`. Exit codes for every script: 0 done; 1 or 2 is a system error or a wrong call (`SYSTEM ERROR:` on stderr): fix the call once with `--help`, and if it still fails report the error line and stop; 3 is a user error (`USER ERROR:` on stderr): do not retry, handle it as the step says.
 
-Read the vault path configured by `wiki-vault`:
+## 1. Vault path and vault rules
 
-```bash
-cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
-```
+!`bash "${CLAUDE_SKILL_DIR}/scripts/context.sh"`
 
-- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
-- The folder does not contain `CLAUDE.md`: say so, point to `/wiki-vault:overwrite`, and stop.
+- The output above starts with `ERROR:`: reply with the text after `ERROR: ` exactly as it is, and stop.
+- Otherwise `vault:` is the vault path, and the text after `----- vault CLAUDE.md -----` is the vault `CLAUDE.md`. Read it now and follow it: folders, frontmatter schema, allowed `type` values, merge and archive rules, never delete, keep the filename when moving, English without em dashes. If it says to read another file first (for example `Home.md`), read that too.
 
-Never ask for the path and never write it; only `wiki-vault` does that.
+Never ask for the vault path and never write it; only `wiki-vault` does that.
 
-## 2. Read the vault rules
-
-Read `CLAUDE.md` in the vault root and follow it: folders, frontmatter schema, allowed `type` values, merge rules, never delete, keep the filename when moving, English without em dashes.
-
-## 3. Lint the whole vault first
+## 2. Lint the whole vault first
 
 Invoke the skill `wiki-lint:lint` by name with no arguments (never call a lint script by path). This moves stray drafts into the Inbox before ingest selects notes. If lint reports a usage error (exit code 2), show it and stop.
 
 Show nothing of lint's result to the user at this point: no summary, no list of fixes or findings. Its data only feeds the plan. Keep from its result:
 
-- `orphans`: candidates for orphan rows in the plan. Only this full run gives orphans; the `--files` run in step 7 does not.
+- `orphans`: candidates for orphan rows in the plan. Only this full run gives orphans; the `--files` run in step 6 does not.
 - `findings` for the selected drafts (for example `frontmatter-missing`, `frontmatter-invalid`, `empty-section`, `ambiguous-link`): turn them into plan rows.
 - `placeholderLinks`: never touch these links.
-- `movedToInbox` and `removedDeadLinks`: keep them for the summary in step 8.
+- `movedToInbox` and `removedDeadLinks`: keep them for the summary in step 7.
 
-## 4. Select the notes
+## 3. Select the notes
 
-A note is a candidate only when it is inside `01. Inbox` (not in a subfolder) and its frontmatter has `status: draft`. Notes with another status or no `status` are skipped.
+Run, with `all`, the note name from the arguments, or nothing when there is no argument:
 
-- **No argument:** list every candidate, one path from the vault root per line in backticks, and ask which one to process. Continue with the chosen note. No candidates: say so and go to step 9.
-- **`all`:** every candidate.
-- **A note name:** the candidate whose filename (without `.md`) matches, case-insensitive. If the note exists but is not a `draft` in `01. Inbox`, stop and say which status and folder it has. Not found at all: say so and stop.
+```bash
+bash "${CLAUDE_SKILL_DIR}/scripts/select.sh" --vault "<vault>" ["all" | "<note name>"]
+```
 
-## 5. Build the plan
+It prints `candidate:` lines (drafts directly in `01. Inbox`), `candidates: <n>`, then one `note:` line per other note with its `status`, `aliases` and `title` (only when it differs from the filename). A `same name:` part on a candidate lists other notes with the same filename.
 
-For each selected note, read it and work out:
+- **No argument:** list every candidate, one path from the vault root per line in backticks, and ask which one to process. Continue with the chosen note. `candidates: 0`: say there are no drafts in the Inbox and go to step 8.
+- **`all`:** every candidate. `candidates: 0`: say so and go to step 8.
+- **A note name:** the one candidate printed. Exit 3 means the note is not a `draft` in `01. Inbox` or does not exist: tell the user the error text (it names the status and folder) and stop.
+
+## 4. Build the plan
+
+For each selected note, read it and work out the rows below. Use the `note:` lines from step 3 as the index of existing notes (filenames, titles, aliases, status); search note bodies only when you need their content to judge relevance.
 
 - **Frontmatter:** fix it to the schema in the vault `CLAUDE.md` (`type`, `topic`, `aliases`, `tags`, `created`, `related`, `source`). A `type` that is not in the allowed list gets its own `new type:` row, never used silently.
 - **Structure:** tidy headings and layout; keep the content and meaning.
-- **Links:** add `[[Note]]` links (shortest form) to existing notes found by searching filenames, titles and aliases, and fill `related`.
+- **Links:** add `[[Note]]` links (shortest form) to existing notes from the index, and fill `related`.
 - **Orphans:** for each note in lint's `orphans` list that is really related to this draft, add a separate plan row with a link from the draft to the orphan or from the orphan to the draft. Unrelated orphans stay as they are.
 - **Destination:** the folder from the vault `CLAUDE.md` that fits (`20. Customers`, `30. Knowledge`, `40. Projects`, ...), or a merge into an existing note. If no folder fits the note content, the destination is `keep, <reason>`.
-- **Name clash:** if a note with the same filename already exists in the destination, do not plan a move there; the destination becomes `keep, name clash in <folder>`.
+- **Name clash:** if the candidate's `same name:` list has a note in the destination folder, do not plan a move there; the destination becomes `keep, name clash in <folder>`.
 
 Show only this, with no text before it and at most one line after it asking for approval:
 
@@ -80,37 +81,47 @@ Table rules:
   - `merge with:` one or more target notes, comma separated.
   - `actions:` one of `formatter` (frontmatter to the schema and tidy structure), `new type: <value>` (a `type` not in the allowed list), `fill section: <heading>` (an empty section), `fix link: [[X]]` (an ambiguous link rewritten to path form), `add alias: <name>`, or any other frontmatter property change such as `set topic: <value>`, `add tag: <tag>` or `set source: <value>`. Never `status`.
   - `none` when a draft has nothing to change; it still gets one row.
-- **destination:** a folder path, or `keep, <reason>`. Status is never a row, it follows from the destination: a folder means `status: review`, `keep` means the note stays `draft` in `01. Inbox` (its other approved rows are still applied). A merge source goes to `99. Archived`. A name clash in the target folder gives `keep, name clash in <folder>`. An orphan always gets `keep, orphan stays in <folder>`.
+- **destination:** a folder path, or `keep, <reason>`. Status is never a row, it follows from the destination: a folder means `status: review`, `keep` means the note stays `draft` in `01. Inbox` (its other approved rows are still applied). A merge source goes to the archive folder of the vault `CLAUDE.md` (`99. Archived` by default). A name clash in the target folder gives `keep, name clash in <folder>`. An orphan always gets `keep, orphan stays in <folder>`.
 
-Wait for one reply. It is either an OK, or an OK with changes per id (for example "id 3 skip", "id 6 to 40. Projects", "id 2 also [[X]]"). Apply those changes to the plan and go straight to step 6: do not show the table again and do not ask again. Approving the table is the explicit OK for each merge row, because the row names both the source (`note`) and the target (`merge with:`). A reply that does not approve means no change at all.
+Wait for one reply. It is either an OK, or an OK with changes per id (for example "id 3 skip", "id 6 to 40. Projects", "id 2 also [[X]]"). Apply those changes to the plan and go straight to step 5: do not show the table again and do not ask again. Approving the table is the explicit OK for each merge row, because the row names both the source (`note`) and the target (`merge with:`). A reply that does not approve means no change at all.
 
-## 6. Apply, one note at a time
+## 5. Apply, one note at a time
 
 Finish each note completely before starting the next, without asking the user anything:
 
-1. Edit the note with its approved rows. Set `status: review` only when it has a folder destination; a `keep` note stays `draft`.
-2. Move it with its filename unchanged: `mv -n "<vault>/01. Inbox/<name>.md" "<vault>/<folder>/<name>.md"`. If the target exists, do not move: set the note back to `status: draft`, leave it in `01. Inbox` and note it for step 8.
+1. Edit the note with its approved rows. Never edit the `status` line yourself; the script sets it.
+2. Folder destination only (a `keep` note stays `draft` in `01. Inbox`, no call):
+
+   ```bash
+   bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<name>.md" "<folder>" review
+   ```
+
+   It moves the note with its filename unchanged and sets `status: review`, then prints `path:` (after the move) and `status:`. Exit 3 (for example a name clash found now): nothing moved and the note stays `draft` in `01. Inbox`; note the error for step 7 and continue.
 3. Apply the approved orphan rows for this note.
-4. For an approved merge: add the source's content to the target, add the source's title to the target's `aliases`, change links to the source into links to the target, set the source to `status: archived` and move it to `99. Archived` with its filename unchanged. The target gets `status: review`; the source is never deleted.
+4. For an approved merge, in this order:
+   1. Add the source's content to the target and the source's title to the target's `aliases` (Edit).
+   2. Change links to the source into links to the target, in every note: `bash "${CLAUDE_SKILL_DIR}/scripts/relink.sh" --vault "<vault>" "<source name>" "<target name>"`. It prints one `changed:` line per rewritten note.
+   3. Archive the source, never delete it: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<archive folder>" archived`. Use `keep` instead of `archived` when the vault `CLAUDE.md` says archived notes keep their last status.
+   4. Set the target to review in place: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "<target path>" "<target folder>" review`.
 
-Keep a list of every changed note by its path after the move.
+Keep a list of every changed note by its path after the move: `path:` lines, `changed:` lines and the orphans you edited.
 
-## 7. Lint the changed notes
+## 6. Lint the changed notes
 
-Invoke `wiki-lint:lint --files "<path 1>" "<path 2>" ...` with every note changed in step 6 (drafts, orphans that got a link, merge targets and archived sources), paths from the vault root after the move, each one quoted. Lint runs straight away and checks stray draft, frontmatter, outgoing dead links, ambiguous links and empty sections for those notes. Skip this step when nothing changed.
+Invoke `wiki-lint:lint --files "<path 1>" "<path 2>" ...` with every note changed in step 5 (drafts, orphans that got a link, notes relinked, merge targets and archived sources), paths from the vault root after the move, each one quoted. Lint runs straight away and checks stray draft, frontmatter, outgoing dead links, ambiguous links and empty sections for those notes. Skip this step when nothing changed.
 
-## 8. Summary of what is left
+## 7. Summary of what is left
 
 Short and scannable: a point list or a small table per group, no prose story. Skip empty groups.
 
 - **Lint fixed:** `movedToInbox` (`from` to `to`) and `removedDeadLinks` (`path:line` and the original link) from both lint runs.
-- **Still to consider:** step 7 `findings` as a table `category | note | detail`, plus skipped ids, drafts kept in the Inbox with their reason, and moves that failed on a name clash.
+- **Still to consider:** step 6 `findings` as a table `category | note | detail`, plus skipped ids, drafts kept in the Inbox with their reason, and moves that failed with exit 3 (with the error text).
 
 Ingest fixes nothing more itself; any further fix is a new ingest run.
 
-## 9. Final list
+## 8. Final list
 
-Always end with the notes that went from `draft` to `review`, one path from the vault root per line in backticks, using the path after the move. The backticks stop Markdown from reading a folder number like `30.` as a numbered list:
+Always end with the notes that went from `draft` to `review` (the `path:` of each successful `promote.sh ... review` call for a draft), one path from the vault root per line in backticks. The backticks stop Markdown from reading a folder number like `30.` as a numbered list:
 
 ```
 Moved from draft to review:
