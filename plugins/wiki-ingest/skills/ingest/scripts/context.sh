@@ -26,9 +26,14 @@ EOF
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 [ $# -eq 0 ] || { echo "SYSTEM ERROR: context.sh: takes no arguments, see --help" >&2; exit 2; }
 
+for t in tr head sed; do command -v "$t" > /dev/null || { echo "SYSTEM ERROR: context.sh: $t not installed" >&2; exit 1; }; done
+
 conf="$HOME/.claude/obsidian-wiki/vault-path"
 vault=
-[ -f "$conf" ] && vault=$(tr -d '\r' < "$conf" | head -n 1 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+if [ -f "$conf" ]; then
+  vault=$(tr -d '\r' < "$conf" | head -n 1 | sed 's/^[[:space:]]*//; s/[[:space:]]*$//') ||
+    { echo "SYSTEM ERROR: context.sh: cannot read $conf" >&2; exit 1; }
+fi
 if [ -z "$vault" ]; then
   echo "ERROR: Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault."
   exit 0

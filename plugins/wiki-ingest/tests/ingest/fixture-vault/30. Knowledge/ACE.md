@@ -8,7 +8,7 @@ status: evergreen
 # Agentic Context Engineering
 
 See [[ACE notes]], [[01. Inbox/ACE notes|the notes]] and [[ace notes#Part]].
-Not [[ACE notes long]].
+Not [[ACE notes long]] and not [[40. Projects/ACE notes]].
 
 ```
 [[ACE notes]]

@@ -21,6 +21,7 @@ output (stdout):
   candidates: <n>
   note: <path> [| status: <s>] [| aliases: <a>, ...] [| title: <t>]   every other note (dot folders skipped)
   notes: <n>
+  index: ...     only when the vault has more than 400 other notes (the rest is not listed)
 
 exit codes:
   0  listed (candidates: 0 is a normal result)
@@ -38,6 +39,7 @@ user() { echo "USER ERROR: select.sh: $*" >&2; exit 3; }
 
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 for t in awk find xargs sort; do command -v "$t" > /dev/null || sys "$t not installed"; done
+awk --version 2> /dev/null | grep GNU > /dev/null || sys "GNU awk (gawk) required"
 
 [ "${1:-}" = "--vault" ] && [ $# -ge 2 ] || bad "missing --vault <dir>"
 vault=$2; shift 2
@@ -55,6 +57,7 @@ records=$(find . -mindepth 1 -name '.*' -prune -o -type f -name '*.md' ! -path .
   function flush() { if (path != "") print path "\t" st "\t" al "\t" ti }
   { sub(/\r$/, "") }
   FNR == 1 {
+    sub(/^\xef\xbb\xbf/, "")
     flush()
     path = FILENAME; sub(/^\.\//, "", path)
     st = ""; al = ""; ti = ""; infm = 0; titled = 0; fence = 0; inal = 0
@@ -111,6 +114,7 @@ out=$(ARG="$arg" WANT="$want" awk -F '\t' '
     print "candidates: " c
     k = 0
     for (i = 1; i <= n; i++) if (!pick[i]) {
+      if (k >= 400) { k++; cut = 1; continue }
       line = "note: " p[i]
       if (s[i] != "") line = line " | status: " s[i]
       if (a[i] != "") line = line " | aliases: " a[i]
@@ -118,6 +122,7 @@ out=$(ARG="$arg" WANT="$want" awk -F '\t' '
       print line; k++
     }
     print "notes: " k
+    if (cut) print "index: only the first 400 notes are listed, search the vault for the rest"
   }' <<< "$records") && rc=0 || rc=$?
 case $rc in
   0) printf '%s\n' "$out" ;;

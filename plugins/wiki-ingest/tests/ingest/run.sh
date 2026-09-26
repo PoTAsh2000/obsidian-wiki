@@ -84,7 +84,9 @@ errline select-missing "USER ERROR: select.sh: no note named \"nope\""
 run select-too-many 2 "" bash "$scripts/select.sh" --vault "$fixture" a b
 errline select-too-many "SYSTEM ERROR:"
 run select-no-vault 2 "" bash "$scripts/select.sh" tokens
+errline select-no-vault "SYSTEM ERROR:"
 run select-bad-vault 2 "" bash "$scripts/select.sh" --vault "$tmp/missing"
+errline select-bad-vault "SYSTEM ERROR:"
 mkdir -p "$tmp/empty"
 run select-empty 0 "candidates: 0
 notes: 0" bash "$scripts/select.sh" --vault "$tmp/empty"
@@ -106,8 +108,22 @@ errline promote-clash "USER ERROR: promote.sh: name clash"
 same "$tmp/v/01. Inbox/Tokens.md" "$fixture/01. Inbox/Tokens.md" promote-clash
 run promote-archive 0 "path: 99. Archived/ACE notes.md
 status: archived" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/ACE notes.md" "99. Archived" archived
-run promote-keep 0 "path: 40. Projects/Idea.md
-status: draft" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Idea.md" "40. Projects" keep
+run promote-keep 2 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Idea.md" "40. Projects" keep
+errline promote-keep "SYSTEM ERROR: promote.sh: status must be review or archived"
+# resume: an earlier run moved the draft but did not set the status
+mv "$tmp/v/01. Inbox/Idea.md" "$tmp/v/40. Projects/Idea.md"
+run promote-resume 0 "path: 40. Projects/Idea.md
+status: review" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Idea.md" "40. Projects" review
+# a same-name note with another status is not taken for done work
+run promote-twin 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Nope.md" "99. Archived" archived
+run promote-twin-status 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Idea.md" "40. Projects" archived
+errline promote-twin-status "USER ERROR: promote.sh: note not found: 01. Inbox/Idea.md, and 40. Projects/Idea.md has status review"
+# a UTF-8 BOM before the frontmatter is kept and does not hide the status
+printf '\xef\xbb\xbf---\nstatus: draft\n---\n# Bom\n' > "$tmp/v/01. Inbox/Bom.md"
+run select-bom 0 "*" bash "$scripts/select.sh" --vault "$tmp/v" bom
+run promote-bom 0 "path: 40. Projects/Bom.md
+status: review" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Bom.md" "40. Projects" review
+same "$tmp/v/40. Projects/Bom.md" <(printf '\xef\xbb\xbf---\nstatus: review\n---\n# Bom\n') promote-bom
 run promote-in-place 0 "path: 30. Knowledge/ACE.md
 status: review" bash "$scripts/promote.sh" --vault "$tmp/v" "30. Knowledge/ACE.md" "30. Knowledge" review
 sed 's/^status: evergreen$/status: review/' "$fixture/30. Knowledge/ACE.md" > "$tmp/want"
@@ -115,14 +131,19 @@ same "$tmp/v/30. Knowledge/ACE.md" "$tmp/want" promote-in-place
 run promote-not-draft 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Reviewed.md" "40. Projects" review
 errline promote-not-draft "USER ERROR: promote.sh: 01. Inbox/Reviewed.md has status review"
 run promote-not-inbox 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Sub/Deep.md" "40. Projects" review
+errline promote-not-inbox "USER ERROR:"
 run promote-inbox-in-place 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Reviewed.md" "01. Inbox" review
+errline promote-inbox-in-place "USER ERROR:"
 run promote-missing 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Nope.md" "40. Projects" review
+errline promote-missing "USER ERROR:"
 run promote-no-folder 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Tokens.md" "50. Nowhere" review
 errline promote-no-folder "USER ERROR: promote.sh: destination folder not found"
 run promote-bad-status 2 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Tokens.md" "40. Projects" evergreen
 errline promote-bad-status "SYSTEM ERROR:"
 run promote-escape 2 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Tokens.md" "../x" review
+errline promote-escape "SYSTEM ERROR:"
 run promote-args 2 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Tokens.md"
+errline promote-args "SYSTEM ERROR:"
 # CRLF note keeps its line endings; a note without status line gets one
 printf -- '---\r\ntype: concept\r\nstatus: draft\r\n---\r\n# Crlf\r\n' > "$tmp/v/01. Inbox/Crlf.md"
 run promote-crlf 0 "*" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/Crlf.md" "40. Projects" review
@@ -131,14 +152,19 @@ same "$tmp/v/40. Projects/Crlf.md" "$tmp/want" promote-crlf
 printf -- '---\ntype: concept\n---\n# Target\n' > "$tmp/v/40. Projects/Target.md"
 run promote-add-status 0 "path: 40. Projects/Target.md
 status: review" bash "$scripts/promote.sh" --vault "$tmp/v" "40. Projects/Target.md" "40. Projects" review
-run promote-no-fm 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/No Status.md" "40. Projects" review
+run promote-no-status 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "01. Inbox/No Status.md" "40. Projects" review
+errline promote-no-status "USER ERROR: promote.sh: 01. Inbox/No Status.md has no status"
+printf -- '# Bare\n' > "$tmp/v/40. Projects/Bare.md"
+run promote-no-fm 3 "" bash "$scripts/promote.sh" --vault "$tmp/v" "40. Projects/Bare.md" "40. Projects" review
+errline promote-no-fm "USER ERROR: promote.sh: 40. Projects/Bare.md has no frontmatter"
+same "$tmp/v/40. Projects/Bare.md" <(printf -- '# Bare\n') promote-no-fm
 
 # ---- relink.sh ----
 fresh
 run relink 0 "changed: 01. Inbox/Tokens.md
 changed: 30. Knowledge/ACE.md
 changed: 40. Projects/Proj.md
-links: 5" bash "$scripts/relink.sh" --vault "$tmp/v" "ACE notes" ACE
+links: 5" bash "$scripts/relink.sh" --vault "$tmp/v" "01. Inbox/ACE notes.md" ACE
 cat > "$tmp/want" <<'EOF'
 ---
 type: concept
@@ -150,7 +176,7 @@ status: evergreen
 # Agentic Context Engineering
 
 See [[ACE]], [[ACE|the notes]] and [[ACE#Part]].
-Not [[ACE notes long]].
+Not [[ACE notes long]] and not [[40. Projects/ACE notes]].
 
 ```
 [[ACE notes]]
@@ -158,12 +184,23 @@ Not [[ACE notes long]].
 EOF
 same "$tmp/v/30. Knowledge/ACE.md" "$tmp/want" relink
 grep -qF 'related: ["[[ACE]]"]' "$tmp/v/40. Projects/Proj.md" || { echo "FAIL relink: related not rewritten"; fail=1; }
-run relink-again 0 "links: 0" bash "$scripts/relink.sh" --vault "$tmp/v" "ACE notes" ACE
-run relink-no-target 3 "" bash "$scripts/relink.sh" --vault "$tmp/v" "ACE notes" "Nope"
+run relink-again 0 "links: 0" bash "$scripts/relink.sh" --vault "$tmp/v" "01. Inbox/ACE notes.md" ACE
+run relink-no-target 3 "" bash "$scripts/relink.sh" --vault "$tmp/v" "01. Inbox/ACE notes.md" "Nope"
 errline relink-no-target "USER ERROR:"
 run relink-same 2 "" bash "$scripts/relink.sh" --vault "$tmp/v" ACE ace
+errline relink-same "SYSTEM ERROR:"
 run relink-bad-name 2 "" bash "$scripts/relink.sh" --vault "$tmp/v" "A|B" ACE
+errline relink-bad-name "SYSTEM ERROR:"
 run relink-args 2 "" bash "$scripts/relink.sh" --vault "$tmp/v" ACE
+
+errline relink-args "SYSTEM ERROR:"
+
+# system errors: required tools missing (exit 1)
+bashbin=$(command -v bash)
+for s in select promote relink; do
+  run "sys-$s" 1 "" env PATH=/nonexistent "$bashbin" "$scripts/$s.sh" --vault "$tmp/v" a b c
+  errline "sys-$s" "SYSTEM ERROR: $s.sh: .* not installed"
+done
 
 after=$(cd "$fixture" && find . -type f -exec md5sum {} + | sort)
 [ "$before" = "$after" ] || { echo "FAIL fixture vault changed"; fail=1; }

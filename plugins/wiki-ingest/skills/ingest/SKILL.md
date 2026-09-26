@@ -41,7 +41,7 @@ Run, with `all`, the note name from the arguments, or nothing when there is no a
 bash "${CLAUDE_SKILL_DIR}/scripts/select.sh" --vault "<vault>" ["all" | "<note name>"]
 ```
 
-It prints `candidate:` lines (drafts directly in `01. Inbox`), `candidates: <n>`, then one `note:` line per other note with its `status`, `aliases` and `title` (only when it differs from the filename). A `same name:` part on a candidate lists other notes with the same filename.
+It prints `candidate:` lines (drafts directly in `01. Inbox`), `candidates: <n>`, then one `note:` line per other note with its `status`, `aliases` and `title` (only when it differs from the filename). A `same name:` part on a candidate lists other notes with the same filename. An `index:` line means the vault is too big to list every note; search the vault for link targets beyond the list.
 
 - **No argument:** list every candidate, one path from the vault root per line in backticks, and ask which one to process. Continue with the chosen note. `candidates: 0`: say there are no drafts in the Inbox and go to step 8.
 - **`all`:** every candidate. `candidates: 0`: say so and go to step 8.
@@ -81,7 +81,7 @@ Table rules:
   - `merge with:` one or more target notes, comma separated.
   - `actions:` one of `formatter` (frontmatter to the schema and tidy structure), `new type: <value>` (a `type` not in the allowed list), `fill section: <heading>` (an empty section), `fix link: [[X]]` (an ambiguous link rewritten to path form), `add alias: <name>`, or any other frontmatter property change such as `set topic: <value>`, `add tag: <tag>` or `set source: <value>`. Never `status`.
   - `none` when a draft has nothing to change; it still gets one row.
-- **destination:** a folder path, or `keep, <reason>`. Status is never a row, it follows from the destination: a folder means `status: review`, `keep` means the note stays `draft` in `01. Inbox` (its other approved rows are still applied). A merge source goes to the archive folder of the vault `CLAUDE.md` (`99. Archived` by default). A name clash in the target folder gives `keep, name clash in <folder>`. An orphan always gets `keep, orphan stays in <folder>`.
+- **destination:** a folder path, or `keep, <reason>`. Status is never a row, it follows from the destination: a folder means `status: review`, `keep` means the note stays `draft` in `01. Inbox` (its other approved rows are still applied). A merge source goes to the archive folder of the vault `CLAUDE.md` (`99. Archived` by default) with `status: archived`, through step 5 item 4 only. A name clash in the target folder gives `keep, name clash in <folder>`. An orphan always gets `keep, orphan stays in <folder>`.
 
 Wait for one reply. It is either an OK, or an OK with changes per id (for example "id 3 skip", "id 6 to 40. Projects", "id 2 also [[X]]"). Apply those changes to the plan and go straight to step 5: do not show the table again and do not ask again. Approving the table is the explicit OK for each merge row, because the row names both the source (`note`) and the target (`merge with:`). A reply that does not approve means no change at all.
 
@@ -90,7 +90,7 @@ Wait for one reply. It is either an OK, or an OK with changes per id (for exampl
 Finish each note completely before starting the next, without asking the user anything:
 
 1. Edit the note with its approved rows. Never edit the `status` line yourself; the script sets it.
-2. Folder destination only (a `keep` note stays `draft` in `01. Inbox`, no call):
+2. Folder destination only, and not a merge source (a merge source is archived in item 4; a `keep` note stays `draft` in `01. Inbox`, no call):
 
    ```bash
    bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<name>.md" "<folder>" review
@@ -98,11 +98,13 @@ Finish each note completely before starting the next, without asking the user an
 
    It moves the note with its filename unchanged and sets `status: review`, then prints `path:` (after the move) and `status:`. Exit 3 (for example a name clash found now): nothing moved and the note stays `draft` in `01. Inbox`; note the error for step 7 and continue.
 3. Apply the approved orphan rows for this note.
-4. For an approved merge, in this order:
+4. For an approved merge, in this order (with several targets, links go to the first one):
    1. Add the source's content to the target and the source's title to the target's `aliases` (Edit).
-   2. Change links to the source into links to the target, in every note: `bash "${CLAUDE_SKILL_DIR}/scripts/relink.sh" --vault "<vault>" "<source name>" "<target name>"`. It prints one `changed:` line per rewritten note.
-   3. Archive the source, never delete it: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<archive folder>" archived`. Use `keep` instead of `archived` when the vault `CLAUDE.md` says archived notes keep their last status.
+   2. Change links to the source into links to the target, in every note: `bash "${CLAUDE_SKILL_DIR}/scripts/relink.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<target name>"`. It prints one `changed:` line per rewritten note.
+   3. Archive the source, never delete it: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<archive folder>" archived`.
    4. Set the target to review in place: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "<target path>" "<target folder>" review`.
+
+   Exit 3 in any of these steps: stop this merge (do not run the next merge steps), leave the source where it is, and report the error text in step 7.
 
 Keep a list of every changed note by its path after the move: `path:` lines, `changed:` lines and the orphans you edited.
 

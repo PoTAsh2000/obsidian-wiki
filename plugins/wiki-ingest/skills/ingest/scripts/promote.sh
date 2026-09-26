@@ -5,23 +5,24 @@ export LC_ALL=C
 
 usage() {
   cat <<'EOF'
-usage: promote.sh --vault <dir> <note> <folder> <review|archived|keep>
+usage: promote.sh --vault <dir> <note> <folder> <review|archived>
 
 Move a draft from "01. Inbox" to <folder> with its filename unchanged, and set
 the frontmatter status. Run only for rows the user approved. Never deletes.
 When <folder> is the note's own folder, only the status is set (merge target).
+Safe to rerun: a moved note whose status is still draft gets its status set;
+a note already at <folder>/<name> with <status> is reported as already done.
 
 arguments:
   --vault <dir>  vault root (required)
   <note>         note path from the vault root, e.g. "01. Inbox/Tokens.md"
   <folder>       destination folder from the vault root, e.g. "30. Knowledge"
-  <status>       review (filed draft or merge target), archived (merge source),
-                 keep (leave the status line as it is)
+  <status>       review (filed draft or merge target), archived (merge source)
 
 output (stdout):
   path: <path after the move>
   status: <status now in the frontmatter>
-  unchanged: already done      only when a second run finds the work done
+  unchanged: already done      only on a rerun that finds the work done
 
 exit codes:
   0  moved or status set (or already done)
@@ -39,10 +40,11 @@ user() { echo "USER ERROR: promote.sh: $*" >&2; exit 3; }
 
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 for t in awk mv mktemp; do command -v "$t" > /dev/null || sys "$t not installed"; done
+awk --version 2> /dev/null | grep GNU > /dev/null || sys "GNU awk (gawk) required"
 
 [ "${1:-}" = "--vault" ] && [ $# -eq 5 ] || bad "expected --vault <dir> <note> <folder> <status>"
 vault=$2 note=$3 folder=$4 status=$5
-case $status in review|archived|keep) ;; *) bad "status must be review, archived or keep, got '$status'" ;; esac
+case $status in review|archived) ;; *) bad "status must be review or archived, got '$status'" ;; esac
 note=${note//\\//}; note=${note#./}
 folder=${folder//\\//}; folder=${folder#./}; folder=${folder%/}
 case "/$note/$folder/" in */../*|*/.*) bad "path leaves the vault or enters a dot folder" ;; esac
@@ -57,18 +59,17 @@ dest="$folder/$name"
 
 # fm_status <file>: the frontmatter status value, empty when none.
 fm_status() {
-  awk '{ sub(/\r$/, "") } NR == 1 { if ($0 !~ /^---[ \t]*$/) exit; next } /^---[ \t]*$/ { exit }
+  awk '{ sub(/\r$/, "") } NR == 1 { sub(/^\xef\xbb\xbf/, ""); if ($0 !~ /^---[ \t]*$/) exit; next } /^---[ \t]*$/ { exit }
     /^status:/ { v = $0; sub(/^status:[ \t]*/, "", v); gsub(/[ \t"\x27]+$|^["\x27]/, "", v); print v; exit }' "$1"
 }
 
 # set_status <file>: rewrite or add the frontmatter status line, keeping line endings.
 set_status() {
-  [ "$status" = keep ] && return 0
   local tmp
   tmp=$(mktemp "$1.XXXXXX") || sys "cannot create a temp file next to $1"
   if ! awk -v BINMODE=3 -v S="$status" '
     { cr = ($0 ~ /\r$/) ? "\r" : ""; line = $0; sub(/\r$/, "", line) }
-    NR == 1 { if (line !~ /^---[ \t]*$/) bad = 1; else infm = 1; print; next }
+    NR == 1 { sub(/^\xef\xbb\xbf/, "", line); if (line !~ /^---[ \t]*$/) bad = 1; else infm = 1; print; next }
     infm && line ~ /^---[ \t]*$/ { if (!done) print "status: " S cr; infm = 0; done = 1; print; next }
     infm && line ~ /^status:/ { print "status: " S cr; done = 1; next }
     { print }
@@ -89,10 +90,12 @@ if [ "$src_dir" = "$folder" ]; then
 fi
 
 if [ ! -f "$note" ]; then
-  if [ -f "$dest" ] && { [ "$status" = keep ] || [ "$(fm_status "$dest")" = "$status" ]; }; then
-    report "$dest"; echo "unchanged: already done"; exit 0
-  fi
-  user "note not found: $note"
+  [ "$src_dir" = "01. Inbox" ] && [ -f "$dest" ] || user "note not found: $note"
+  cur=$(fm_status "$dest")
+  if [ "$cur" = "$status" ]; then report "$dest"; echo "unchanged: already done"; exit 0; fi
+  # Resume: an earlier run moved the draft but did not set the status.
+  [ "$cur" = draft ] || user "note not found: $note, and $dest has ${cur:+status }${cur:-no status}"
+  set_status "$dest"; report "$dest"; exit 0
 fi
 [ "$src_dir" = "01. Inbox" ] || user "$note is not in 01. Inbox, ingest only moves Inbox drafts"
 cur=$(fm_status "$note")
