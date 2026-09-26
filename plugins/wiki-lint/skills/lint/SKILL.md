@@ -2,28 +2,30 @@
 name: lint
 description: Check the user's Obsidian vault for broken links, stray drafts, bad frontmatter, empty sections, duplicate names, old Inbox notes and orphans, and fix stray drafts and dead links. Use when the user says "check my vault", "lint my vault", "find broken links in my notes" or "is my Obsidian vault tidy?", and when another wiki skill invokes wiki-lint:lint. Do not use for linting code, checking a repository or questions that do not mention the vault, Obsidian or notes.
 argument-hint: "[--files <path>...] [--dry-run]"
+allowed-tools:
+  - Bash(bash "${CLAUDE_PLUGIN_ROOT}/scripts/vault.sh")
+  - Bash(bash "${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh" *)
 ---
 
 # Lint the vault
 
-Runs `lint.sh`, which checks the vault and fixes exactly two things on its own, without a plan or confirm: it moves `draft` notes outside `01. Inbox` into the Inbox (filename unchanged) and unlinks dead links (the text stays). Everything else is only reported. This skill never deletes a note, never changes `status` and never fixes a finding by itself.
+`lint.sh` checks the vault and fixes exactly two things on its own, without a plan or confirm: it moves `draft` notes outside `01. Inbox` into the Inbox (filename unchanged) and unlinks dead links (the text stays). Everything else is only reported. This skill never deletes a note, never changes `status` and never fixes a finding by itself.
 
 ## 1. Read the vault CLAUDE.md
 
-First find the vault, then read `<vault>/CLAUDE.md` before anything else. Its rules win over this skill on any difference, except that lint only makes the two fixes above.
+The vault path (from `~/.claude/obsidian-wiki/vault-path`, written only by `wiki-vault`) and the vault `CLAUDE.md`, gathered read-only:
 
-Read the vault path configured by `wiki-vault`:
+!`bash "${CLAUDE_PLUGIN_ROOT}/scripts/vault.sh"`
 
-```bash
-cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
-```
+- `vault: missing`: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
+- `error: vault not found` or `error: no CLAUDE.md`: say that the configured vault folder is missing or has no `CLAUDE.md`, point to `/wiki-vault:overwrite`, and stop.
+- Otherwise the text after `claude-md:` is the vault `CLAUDE.md`. Its rules win over this skill on any difference, except that lint only makes the two fixes above. Do not read it again.
 
-- No output: reply exactly `Vault path is missing. Install wiki-vault@obsidian-wiki and use /wiki-vault:add <vault path> to configure your vault.` and stop.
-- The folder does not contain `CLAUDE.md`: say so, point to `/wiki-vault:overwrite`, and stop.
-
-Never ask for the path and never write it; only `wiki-vault` does that.
+Never ask for the path and never write it.
 
 ## 2. Run the script
+
+Run exactly this once, with `<vault>` from the `vault:` line:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh" --vault "<vault>" $ARGUMENTS
@@ -35,7 +37,12 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/lint.sh" --vault "<vault>" $ARGUMENTS
 
 Run it straight away, no confirm: the user chose that lint fixes without asking. Never run `lint.sh` any other way, and never edit notes to fix findings in this skill.
 
-Exit code 0 means clean, 1 means fixes or findings (normal), 2 means a usage error: show the error line and stop.
+Exit codes:
+
+- `0` clean, `4` fixes or findings: both are normal results, go to step 3.
+- `2` usage error (`SYSTEM ERROR:` with the usage line): fix the call once, for example quote each `--files` path, then run again. If it fails again, show the error line and stop.
+- `3` user error (`USER ERROR:`, for example a `--files` path that does not exist or a vault `CLAUDE.md` without the `type` or status lists): show the error line to the user and stop. Do not retry or guess another path.
+- `1` system error (`SYSTEM ERROR:`, for example GNU awk missing or a write that failed): show the error line, tell the user what to fix, and stop. Do not retry.
 
 ## 3. Explain the result by impact
 

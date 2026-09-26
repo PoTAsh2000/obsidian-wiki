@@ -1,44 +1,75 @@
 #!/usr/bin/env bash
 # lint.sh: check an Obsidian vault against the vault CLAUDE.md rules.
 # Fixes two things itself: moves stray drafts into "01. Inbox" and unlinks dead links.
-# Everything else is reported. Output: one JSON object on stdout.
-# Exit: 0 clean, 1 fixes or findings, 2 usage error.
-#
-# Usage: lint.sh --vault <dir> [--dry-run] [--files <path>...]
-#   Vault: --vault (required).
-#   --files: only these notes or folders (relative to the vault root).
-set -u
+# Everything else is reported. Output: one JSON object on stdout. Help: lint.sh --help.
+set -euo pipefail
 export LC_ALL=C
 
-die() { echo "lint.sh: $*" >&2; exit 2; }
-usage() { die "usage: lint.sh --vault <dir> [--dry-run] [--files <path>...]"; }
+help() {
+  cat <<'EOF'
+usage: lint.sh --vault <dir> [--dry-run] [--files <path>...]
+
+Check an Obsidian vault against its CLAUDE.md and print one JSON object.
+Fixes two things without asking: moves draft notes outside "01. Inbox" into
+the Inbox and unlinks dead links. Everything else is only reported.
+
+options:
+  --vault <dir>      vault root, must contain CLAUDE.md (required)
+  --dry-run          same JSON, no file changed
+  --files <path>...  only these notes or folders, paths from the vault root;
+                     skips orphans, duplicate names and inbox age
+  -h, --help         this help
+
+exit codes:
+  0  clean, nothing fixed or found
+  1  system error (missing tool, write failed, internal error)
+  2  bad usage (unknown option, no --vault, --files without paths)
+  3  user error (vault or --files path not found, CLAUDE.md missing or
+     without the type and status lists)
+  4  fixes or findings (normal result, read the JSON)
+
+example: lint.sh --vault "C:/Vault" --files "30. Knowledge/Tokens.md" "01. Inbox/"
+EOF
+}
+syserr() { echo "SYSTEM ERROR: lint.sh: $*" >&2; exit 1; }
+usage() { echo "SYSTEM ERROR: lint.sh: $*. usage: lint.sh --vault <dir> [--dry-run] [--files <path>...]" >&2; exit 2; }
+usererr() { echo "USER ERROR: lint.sh: $*" >&2; exit 3; }
 
 vault=
 dry=0 files_mode=0 files=()
 while [ $# -gt 0 ]; do
   case $1 in
-    --vault) [ $# -ge 2 ] || usage; vault=$2; shift 2 ;;
+    -h|--help) help; exit 0 ;;
+    --vault) [ $# -ge 2 ] || usage "--vault needs a path"; vault=$2; shift 2 ;;
     --dry-run) dry=1; shift ;;
     --files)
       files_mode=1; shift
       while [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; do files+=("$1"); shift; done ;;
-    *) usage ;;
+    *) usage "unknown argument: $1" ;;
   esac
 done
-[ -n "$vault" ] || die "no vault path: pass --vault"
-command -v cygpath > /dev/null && vault=$(cygpath -u "$vault")
-[ -d "$vault" ] || die "vault not found: $vault"
-cd "$vault" || die "cannot enter vault: $vault"
-[ -f CLAUDE.md ] || die "no CLAUDE.md in vault root: $vault"
-[ "$files_mode" = 0 ] || [ ${#files[@]} -gt 0 ] || usage
+[ -n "$vault" ] || usage "no vault path, pass --vault"
+[ "$files_mode" = 0 ] || [ ${#files[@]} -gt 0 ] || usage "--files needs at least one path"
+
+# Dependencies first, before any side effect.
+for t in awk find sort date mktemp grep sed tr mv; do
+  command -v "$t" > /dev/null || syserr "required tool not found: $t"
+done
+awk 'BEGIN { exit !("version" in PROCINFO) }' || syserr "GNU awk (gawk) required"
+cutoff=$(date -d '7 days ago' +%F 2> /dev/null) || syserr "GNU date required (date -d)"
+
+if command -v cygpath > /dev/null; then vault=$(cygpath -u "$vault"); fi
+[ -d "$vault" ] || usererr "vault not found: $vault"
+cd "$vault" || syserr "cannot enter vault: $vault"
+[ -f CLAUDE.md ] || usererr "no CLAUDE.md in vault root: $vault"
 
 # Allowed values come from the vault CLAUDE.md at runtime, so the lists can grow.
-types=$(grep -m1 'Allowed `type` values' CLAUDE.md | sed 's/^[^:]*://' | grep -o '`[^`]*`' | tr -d '`' | tr '\n' ' ')
-statuses=$(awk '/^#+ /{s = /^#+ Status lifecycle/} s && /^- `/' CLAUDE.md | grep -o '^- `[^`]*`' | sed 's/^- `//; s/`$//' | tr '\n' ' ')
-[ -n "${types// /}" ] || die "no 'Allowed \`type\` values' line in CLAUDE.md"
-[ -n "${statuses// /}" ] || die "no '- \`status\`' items under 'Status lifecycle' in CLAUDE.md"
+types=$({ grep -m1 'Allowed `type` values' CLAUDE.md || true; } | sed 's/^[^:]*://' | { grep -o '`[^`]*`' || true; } | tr -d '`' | tr '\n' ' ')
+statuses=$(awk '/^#+ /{s = /^#+ Status lifecycle/} s && /^- `/' CLAUDE.md | { grep -o '^- `[^`]*`' || true; } | sed 's/^- `//; s/`$//' | tr '\n' ' ')
+[ -n "${types// /}" ] || usererr "no 'Allowed \`type\` values' line in CLAUDE.md"
+[ -n "${statuses// /}" ] || usererr "no '- \`status\`' items under 'Status lifecycle' in CLAUDE.md"
 
-tmp=$(mktemp -d) || die "cannot create temp dir"
+tmp=$(mktemp -d) || syserr "cannot create temp dir"
 trap 'rm -rf "$tmp"' EXIT
 
 find . -mindepth 1 -name '.*' -prune -o -type f -printf '%P\t%TY-%Tm-%Td\n' | sort > "$tmp/list"
@@ -47,11 +78,12 @@ for f in "${files[@]}"; do
   f=${f#./}; f=${f%/}
   if [ -d "$f" ]; then printf '%s/\n' "$f" >> "$tmp/sel"
   elif [ -f "$f" ]; then printf '%s\n' "$f" >> "$tmp/sel"
-  else die "not found in vault: $f"; fi
+  else usererr "not found in vault: $f"; fi
 done
 
+rc=0
 awk -v BINMODE=3 -v LIST="$tmp/list" -v SEL="$tmp/sel" -v TMP="$tmp" -v FILESMODE="$files_mode" \
-    -v TYPES="$types" -v STATUSES="$statuses" -v CUTOFF="$(date -d '7 days ago' +%F)" -f /dev/stdin > "$tmp/out.json" <<'AWK'
+    -v TYPES="$types" -v STATUSES="$statuses" -v CUTOFF="$cutoff" -f /dev/stdin > "$tmp/out.json" <<'AWK' || rc=$?
 function top(p,   i) { i = index(p, "/"); return i ? substr(p, 1, i - 1) : "" }
 function base(p) { sub(/.*\//, "", p); return p }
 function dir(p) { if (p !~ /\//) return ""; sub(/\/[^\/]*$/, "", p); return p }
@@ -346,19 +378,19 @@ function emit(name, arr, tail,   n, keys, i) {
   printf "%s]%s\n", (n ? "\n  " : ""), tail
 }
 AWK
-rc=$?
-[ "$rc" -le 1 ] || die "internal error (awk exit $rc)"
+[ "$rc" -le 1 ] || syserr "internal error (awk exit $rc)"
 
 if [ "$dry" = 0 ]; then
   if [ -f "$tmp/moves" ]; then
     while IFS=$'\t' read -r from to; do
-      [ -e "$to" ] && die "refusing to overwrite $to"
-      mv -n -- "$from" "$to" || die "move failed: $from"
+      if [ -e "$to" ]; then syserr "refusing to overwrite $to"; fi
+      mv -n -- "$from" "$to" || syserr "move failed: $from"
     done < "$tmp/moves"
   fi
   if [ -f "$tmp/rewrites" ]; then
-    while IFS=$'\t' read -r i path; do cat "$tmp/rw$i" > "$path" || die "write failed: $path"; done < "$tmp/rewrites"
+    while IFS=$'\t' read -r i path; do cat "$tmp/rw$i" > "$path" || syserr "write failed: $path"; done < "$tmp/rewrites"
   fi
 fi
 cat "$tmp/out.json"
-exit "$rc"
+# awk exits 1 when something was fixed or found; report that as 4 (1 means system error).
+[ "$rc" = 0 ] || exit 4
