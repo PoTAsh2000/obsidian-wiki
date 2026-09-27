@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""usage: promote.py --vault <dir> <note> <folder> <review|archived>
+"""usage: promote.py <note> <folder> <review|archived>
 
 Move a draft from "01. Inbox" to <folder> with its filename unchanged, and set
 the frontmatter status. Run only for rows the user approved. Never deletes.
 When <folder> is the note's own folder, only the status is set (merge target).
 Safe to rerun: a moved note whose status is still draft gets its status set;
 a note already at <folder>/<name> with <status> is reported as already done.
+The vault comes from vault.py (the configured vault path).
 
 arguments:
-  --vault <dir>  vault root (required)
   <note>         note path from the vault root, e.g. "01. Inbox/Tokens.md"
   <folder>       destination folder from the vault root, e.g. "30. Knowledge"
   <status>       review (filed draft or merge target), archived (merge source)
@@ -17,14 +17,15 @@ output (stdout):
   path: <path after the move>
   status: <status now in the frontmatter>
   unchanged: already done      only on a rerun that finds the work done
+  ERROR: <message>             vault problem (path missing, no CLAUDE.md), exit 0
 
 exit codes:
-  0  moved or status set (or already done)
+  0  moved or status set (or already done), or an ERROR line
   1  system error (read, write or move failed)
-  2  bad usage (wrong arguments, vault folder not found)
+  2  bad usage (wrong arguments)
   3  user error (note missing, not a draft in 01. Inbox, folder missing, name clash)
 
-example: promote.py --vault "C:/Vault" "01. Inbox/Tokens.md" "30. Knowledge" review
+example: promote.py "01. Inbox/Tokens.md" "30. Knowledge" review
 """
 
 import os
@@ -34,7 +35,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import to_native  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 INBOX = "01. Inbox"
 STATUSES = ("review", "archived")
@@ -148,9 +149,10 @@ def clean_path(raw):
 
 
 def parse_args(argv):
-    if len(argv) != 5 or argv[0] != "--vault":
-        raise bad("expected --vault <dir> <note> <folder> <status>")
-    raw_vault, note, folder, status = argv[1:]
+    """Return (note, folder, status) with paths in vault-root form."""
+    if len(argv) != 3:
+        raise bad("expected <note> <folder> <status>")
+    note, folder, status = argv
     if status not in STATUSES:
         raise bad(f"status must be review or archived, got '{status}'")
     note = clean_path(note)
@@ -160,10 +162,7 @@ def parse_args(argv):
         raise bad("path leaves the vault or enters a dot folder")
     if not folder or not note.endswith(".md"):
         raise bad("note must be a .md path and folder must not be empty")
-    vault = Path(to_native(raw_vault))
-    if not vault.is_dir():
-        raise bad(f"vault folder not found: {raw_vault}")
-    return vault, note, folder, status
+    return note, folder, status
 
 
 def promote(vault, note, folder, status):
@@ -221,7 +220,8 @@ def main(argv):
         print(__doc__.strip())
         return 0
     try:
-        promote(*parse_args(argv))
+        note, folder, status = parse_args(argv)
+        promote(require_vault(), note, folder, status)
     except Fail as fail:
         print(fail, file=sys.stderr)
         return fail.code

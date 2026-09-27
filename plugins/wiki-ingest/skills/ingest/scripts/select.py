@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
-"""usage: select.py --vault <dir> [all | <note name>]
+"""usage: select.py [all | <note name>]
 
 List the ingest candidates (status: draft, directly in "01. Inbox") and index
 every other note, so the plan needs no extra searches. Read-only.
 Run after the full wiki-lint:lint run, because lint moves stray drafts into the Inbox.
+The vault comes from vault.py (the configured vault path).
 
 arguments:
-  --vault <dir>  vault root (required)
   (none) | all   every candidate
   <note name>    one candidate by filename without .md, case-insensitive
 
 output (stdout):
   candidate: <path> [| same name: <path>, ...]   a draft to ingest; same name = filename clash elsewhere
   candidates: <n>
+  ERROR: <message>   vault problem (path missing, no CLAUDE.md), exit 0
   note: <path> [| status: <s>] [| aliases: <a>, ...] [| title: <t>]   every other note (dot folders skipped)
   notes: <n>
   index: first <k> of <n> notes listed ...   only when the index passes about 20000
                  characters (env INGEST_INDEX_LIMIT); the rest is not listed
 
 exit codes:
-  0  listed (candidates: 0 is a normal result)
+  0  listed (candidates: 0 is a normal result), or an ERROR line
   1  system error (a note cannot be read)
-  2  bad usage (wrong arguments, vault folder not found)
+  2  bad usage (wrong arguments)
   3  user error (the named note does not exist, or is not a draft in 01. Inbox)
 
-example: select.py --vault "C:/Vault" "Tokens"
+example: select.py "Tokens"
 """
 
 import os
@@ -33,7 +34,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import to_native  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 INBOX = "01. Inbox"
 DEFAULT_LIMIT = 20000
@@ -212,16 +213,10 @@ def build_output(records, arg, want, limit):
 
 
 def parse_args(argv):
-    if len(argv) < 2 or argv[0] != "--vault":
-        raise bad("missing --vault <dir>")
-    rest = argv[2:]
-    if len(rest) > 1:
+    """Return "all" or the note name."""
+    if len(argv) > 1:
         raise bad("too many arguments, quote a note name with spaces")
-    arg = rest[0] if rest and rest[0] else "all"
-    vault = Path(to_native(argv[1]))
-    if not vault.is_dir():
-        raise bad(f"vault folder not found: {argv[1]}")
-    return vault, arg
+    return argv[0] if argv and argv[0] else "all"
 
 
 def main(argv):
@@ -229,7 +224,8 @@ def main(argv):
         print(__doc__.strip())
         return 0
     try:
-        vault, arg = parse_args(argv)
+        arg = parse_args(argv)
+        vault = require_vault()
         records = read_records(vault)
         want = arg.removesuffix(".md").rsplit("/", 1)[-1]
         limit = os.environ.get("INGEST_INDEX_LIMIT", str(DEFAULT_LIMIT))

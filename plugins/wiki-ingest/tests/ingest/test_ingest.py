@@ -1,7 +1,8 @@
 """Tests for the wiki-ingest:ingest scripts and the vault.py injection.
 
-Scripts run as subprocesses with a temp HOME. Tests that write use a temp copy
-of the fixture vault; the fixture itself must stay unchanged.
+Scripts run as subprocesses with a temp HOME whose vault-path file points at the
+vault under test (use_vault). Tests that write use a temp copy of the fixture
+vault; the fixture itself must stay unchanged.
 
 run: python3 -m unittest discover -s plugins/wiki-ingest/tests -t plugins/wiki-ingest
 """
@@ -52,9 +53,22 @@ class Base(unittest.TestCase):
         self.v = self.tmp / "v"
 
     def fresh(self):
-        """A writable copy of the fixture vault at self.v."""
+        """A writable copy of the fixture vault at self.v, configured as the vault."""
         shutil.rmtree(self.v, ignore_errors=True)
         shutil.copytree(FIXTURE, self.v)
+        self.use_vault(self.v)
+
+    def use_vault(self, vault):
+        """Point the vault-path file in the temp HOME at vault, as wiki-vault would."""
+        self.config.write_text(f"{Path(vault).as_posix()}\n", encoding="utf-8")
+
+    def make_vault(self, name):
+        """An empty vault folder with only a CLAUDE.md, configured as the vault."""
+        vault = self.tmp / name
+        vault.mkdir(exist_ok=True)
+        (vault / "CLAUDE.md").write_text("# Rules\n", encoding="utf-8")
+        self.use_vault(vault)
+        return vault
 
     def run_script(self, script, *args, env=None):
         path = VAULT_PY if script == "vault" else SCRIPTS / f"{script}.py"
@@ -122,6 +136,10 @@ note: 99. Archived/Old.md | status: archived"""
 
 
 class SelectTest(Base):
+    def setUp(self):
+        super().setUp()
+        self.use_vault(FIXTURE)
+
     def test_all(self):
         want = f"""candidate: 01. Inbox/ACE notes.md
 candidate: 01. Inbox/Idea.md
@@ -129,8 +147,8 @@ candidate: 01. Inbox/Tokens.md | same name: 30. Knowledge/Tokens.md
 candidates: 3
 {INDEX}
 notes: 7"""
-        self.check(0, want, "select", "--vault", str(FIXTURE))
-        self.check(0, want, "select", "--vault", str(FIXTURE), "all")
+        self.check(0, want, "select")
+        self.check(0, want, "select", "all")
 
     def test_name(self):
         self.check(0, """candidate: 01. Inbox/Idea.md
@@ -144,7 +162,7 @@ note: 30. Knowledge/ACE.md | status: evergreen | aliases: Agentic Context Engine
 note: 30. Knowledge/Tokens.md | status: review
 note: 40. Projects/Proj.md | status: review
 note: 99. Archived/Old.md | status: archived
-notes: 9""", "select", "--vault", str(FIXTURE), "IDEA")
+notes: 9""", "select", "IDEA")
 
     def test_user_errors(self):
         cases = [
@@ -155,29 +173,39 @@ notes: 9""", "select", "--vault", str(FIXTURE), "IDEA")
         ]
         for name, err in cases:
             with self.subTest(name=name):
-                self.check(3, "", "select", "--vault", str(FIXTURE), name)
+                self.check(3, "", "select", name)
                 self.assert_err(err)
 
     def test_bad_usage(self):
-        for args in (["--vault", str(FIXTURE), "a", "b"], ["tokens"], ["--vault", str(self.tmp / "missing")]):
-            with self.subTest(args=args):
-                self.check(2, "", "select", *args)
-                self.assert_err("SYSTEM ERROR:")
+        self.check(2, "", "select", "a", "b")
+        self.assert_err("SYSTEM ERROR:")
+
+    def test_vault_problem(self):
+        self.config.unlink()
+        self.check(0, MISSING, "select")
+        self.use_vault(self.tmp / "missing")
+        out = self.check(0, None, "select", "tokens")
+        self.assertTrue(out.startswith("ERROR: The configured vault folder has no CLAUDE.md"))
+
+    def test_no_vault_rules_printed(self):
+        out = self.check(0, None, "select")
+        self.assertNotIn("--- vault CLAUDE.md ---", out)
+        self.assertNotIn("vault: ", out)
 
     def test_empty_vault(self):
-        (self.tmp / "empty").mkdir()
-        self.check(0, "candidates: 0\nnotes: 0", "select", "--vault", str(self.tmp / "empty"))
+        self.make_vault("empty")
+        self.check(0, "candidates: 0\nnotes: 0", "select")
 
     def test_bom(self):
         self.fresh()
         (self.v / "01. Inbox" / "Bom.md").write_bytes(b"\xef\xbb\xbf---\nstatus: draft\n---\n# Bom\n")
-        out = self.check(0, None, "select", "--vault", str(self.v), "bom")
+        out = self.check(0, None, "select", "bom")
         self.assertTrue(out.startswith("candidate: 01. Inbox/Bom.md\n"))
 
     def test_cap(self):
         # each line is 26 chars, limit 100 gives 4 lines
-        big = self.tmp / "big" / "30. Knowledge"
-        big.mkdir(parents=True)
+        big = self.make_vault("big") / "30. Knowledge"
+        big.mkdir()
         for i in range(1, 7):
             (big / f"N{i}.md").write_bytes(b"")
         self.check(0, """candidates: 0
@@ -187,8 +215,8 @@ note: 30. Knowledge/N3.md
 note: 30. Knowledge/N4.md
 notes: 6
 index: first 4 of 6 notes listed (output limit), search the vault for the rest""",
-                   "select", "--vault", str(self.tmp / "big"), env={"INGEST_INDEX_LIMIT": "100"})
-        self.check(2, "", "select", "--vault", str(self.tmp / "big"), env={"INGEST_INDEX_LIMIT": "x"})
+                   "select", env={"INGEST_INDEX_LIMIT": "100"})
+        self.check(2, "", "select", env={"INGEST_INDEX_LIMIT": "x"})
 
 
 class PromoteTest(Base):
@@ -197,7 +225,7 @@ class PromoteTest(Base):
         self.fresh()
 
     def promote(self, want_code, want_out, note, folder, status="review"):
-        return self.check(want_code, want_out, "promote", "--vault", str(self.v), note, folder, status)
+        return self.check(want_code, want_out, "promote", note, folder, status)
 
     def fixture_bytes(self, rel):
         return (FIXTURE / rel).read_bytes()
@@ -263,8 +291,16 @@ class PromoteTest(Base):
         self.assert_err("SYSTEM ERROR:")
         self.promote(2, "", "01. Inbox/Tokens.md", "../x")
         self.assert_err("SYSTEM ERROR:")
-        self.check(2, "", "promote", "--vault", str(self.v), "01. Inbox/Tokens.md")
+        self.check(2, "", "promote", "01. Inbox/Tokens.md")
         self.assert_err("SYSTEM ERROR:")
+
+    def test_vault_problem(self):
+        self.config.unlink()
+        self.promote(0, MISSING, "01. Inbox/Tokens.md", "40. Projects")
+        self.use_vault(self.v / "01. Inbox")
+        out = self.promote(0, None, "01. Inbox/Tokens.md", "40. Projects")
+        self.assertTrue(out.startswith("ERROR: The configured vault folder has no CLAUDE.md"))
+        self.assertTrue((self.v / "01. Inbox" / "Tokens.md").exists())
 
     def test_crlf(self):
         # a CRLF note keeps its line endings
@@ -309,7 +345,7 @@ class RelinkTest(Base):
         self.fresh()
 
     def relink(self, want_code, want_out, *args):
-        return self.check(want_code, want_out, "relink", "--vault", str(self.v), *args)
+        return self.check(want_code, want_out, "relink", *args)
 
     def test_relink_and_again(self):
         self.relink(0, """changed: 01. Inbox/Tokens.md
@@ -330,6 +366,11 @@ links: 5""", "01. Inbox/ACE notes.md", "ACE")
             with self.subTest(args=args):
                 self.relink(2, "", *args)
                 self.assert_err("SYSTEM ERROR:")
+
+    def test_vault_problem(self):
+        self.config.unlink()
+        self.relink(0, MISSING, "01. Inbox/ACE notes.md", "ACE")
+        self.assert_bytes(self.v / "30. Knowledge" / "ACE.md", (FIXTURE / "30. Knowledge" / "ACE.md").read_bytes())
 
     def test_ambiguous(self):
         # two notes named Tokens: a bare [[Tokens]] is ambiguous and stays, the path link is rewritten

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""usage: relink.py --vault <dir> <old note> <new name>
+"""usage: relink.py <old note> <new name>
 
 Rewrite links to <old note> in every note to [[new name]], for an approved merge.
 Keeps #heading and |display parts, matches case-insensitively. A bare link [[Old]]
 matches by filename; a path link [[01. Inbox/Old]] only when the path is <old note>.
 Skips fenced code blocks and dot folders. Never deletes.
+The vault comes from vault.py (the configured vault path).
 
 arguments:
-  --vault <dir>  vault root (required)
   <old note>     merge source path from the vault root, e.g. "01. Inbox/ACE notes.md"
   <new name>     merge target filename without .md, must exist in the vault
 
@@ -16,14 +16,15 @@ output (stdout):
   links: <n>         number of links rewritten (0 on a second run)
   skipped-ambiguous: <n>   bare links left alone because several notes have
                            the old filename; the model reports them
+  ERROR: <message>   vault problem (path missing, no CLAUDE.md), exit 0
 
 exit codes:
-  0  done (also when nothing had to change)
+  0  done (also when nothing had to change), or an ERROR line
   1  system error (read or write failed)
-  2  bad usage (wrong arguments, vault folder not found)
+  2  bad usage (wrong arguments)
   3  user error (no note named <new name> in the vault)
 
-example: relink.py --vault "C:/Vault" "01. Inbox/ACE notes.md" "ACE"
+example: relink.py "01. Inbox/ACE notes.md" "ACE"
 """
 
 import os
@@ -33,7 +34,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import to_native  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 FENCE = re.compile(r"^[ \t]*(```|~~~)")
 # [[target followed by the character that ends the target: ] or | or #
@@ -141,22 +142,20 @@ def write_text(path, rel, text):
 
 
 def parse_args(argv):
-    if len(argv) != 4 or argv[0] != "--vault":
-        raise bad("expected --vault <dir> <old note> <new name>")
-    old_path = argv[2].replace("\\", "/")
+    """Return (old name, old path without .md, new name)."""
+    if len(argv) != 2:
+        raise bad("expected <old note> <new name>")
+    old_path = argv[0].replace("\\", "/")
     old_path = (old_path[2:] if old_path.startswith("./") else old_path).removesuffix(".md")
     old = old_path.rsplit("/", 1)[-1]
-    new = argv[3].removesuffix(".md").rsplit("/", 1)[-1]
+    new = argv[1].removesuffix(".md").rsplit("/", 1)[-1]
     if not old or not new:
         raise bad("names must not be empty")
     if any(c in old + new for c in "[]|#"):
         raise bad("names must not contain [ ] | #")
     if old.lower() == new.lower():
         raise bad("old and new name are the same")
-    vault = Path(to_native(argv[1]))
-    if not vault.is_dir():
-        raise bad(f"vault folder not found: {argv[1]}")
-    return vault, old, old_path, new
+    return old, old_path, new
 
 
 def relink(vault, old, old_path, new):
@@ -186,7 +185,8 @@ def main(argv):
         print(__doc__.strip())
         return 0
     try:
-        relink(*parse_args(argv))
+        old, old_path, new = parse_args(argv)
+        relink(require_vault(), old, old_path, new)
     except Fail as fail:
         print(fail, file=sys.stderr)
         return fail.code

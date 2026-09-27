@@ -11,14 +11,14 @@ Arguments: `$ARGUMENTS`
 
 What ingest may change: only notes with `status: draft` inside `01. Inbox` (edit them, move them out, set `status: review`), plus link rows and merges the user approved in the plan. Never delete a note, never set `evergreen`, never archive an orphan.
 
-Scripts: deterministic work runs in the scripts below; you only do the judgment (plan, content edits, summary). Every script has `--help`. Exit codes for every script: 0 done; 1 or 2 is a system error or a wrong call (`SYSTEM ERROR:` on stderr): fix the call once with `--help`, and if it still fails report the error line and stop; 3 is a user error (`USER ERROR:` on stderr): do not retry, handle it as the step says.
+Scripts: deterministic work runs in the scripts below; you only do the judgment (plan, content edits, summary). Every script has `--help`. Exit codes for every script: 0 done; 1 or 2 is a system error or a wrong call (`SYSTEM ERROR:` on stderr): fix the call once with `--help`, and if it still fails report the error line and stop; 3 is a user error (`USER ERROR:` on stderr): do not retry, handle it as the step says. Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop.
 
 ## 1. Vault path and vault rules
 
 !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
 
-- The output above starts with `ERROR:`: reply with the text after `ERROR: ` exactly as it is, and stop.
-- Otherwise `vault:` is the vault path, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it: folders, frontmatter schema, allowed `type` values, merge and archive rules, never delete, keep the filename when moving, English without em dashes. If it says to read another file first (for example `Home.md`), read that too.
+- Output starts with `ERROR:`: reply with the text after `ERROR: ` exactly and stop.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Do not read that file again. It sets the folders, frontmatter schema, allowed `type` values, merge and archive rules, never delete, keep the filename when moving, English without em dashes. If it says to read another file first (for example `Home.md`), read that too.
 
 Never ask for the vault path and never write it; only `wiki-vault` does that.
 
@@ -38,7 +38,7 @@ Show nothing of lint's result to the user at this point: no summary, no list of 
 Run, with `all`, the note name from the arguments, or nothing when there is no argument:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/select.py" --vault "<vault>" ["all" | "<note name>"]
+python3 "${CLAUDE_SKILL_DIR}/scripts/select.py" ["all" | "<note name>"]
 ```
 
 It prints `candidate:` lines (drafts directly in `01. Inbox`), `candidates: <n>`, then one `note:` line per other note with its `status`, `aliases` and `title` (only when it differs from the filename). A `same name:` part on a candidate lists other notes with the same filename. An `index:` line means the vault is too big to list every note; search the vault for link targets beyond the list.
@@ -93,16 +93,16 @@ Finish each note completely before starting the next, without asking the user an
 2. Folder destination only, and not a merge source (a merge source is archived in item 4; a `keep` note stays `draft` in `01. Inbox`, no call):
 
    ```bash
-   python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" --vault "<vault>" "01. Inbox/<name>.md" "<folder>" review
+   python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" "01. Inbox/<name>.md" "<folder>" review
    ```
 
    It moves the note with its filename unchanged and sets `status: review`, then prints `path:` (after the move) and `status:`. Exit 3 (for example a name clash found now): nothing moved and the note stays `draft` in `01. Inbox`; note the error for step 7 and continue.
 3. Apply the approved orphan rows for this note.
 4. For an approved merge, in this order (with several targets, links go to the first one):
    1. Add the source's content to the target and the source's title to the target's `aliases` (Edit).
-   2. Change links to the source into links to the target, in every note: `python3 "${CLAUDE_SKILL_DIR}/scripts/relink.py" --vault "<vault>" "01. Inbox/<source name>.md" "<target name>"`. It prints one `changed:` line per rewritten note, and `skipped-ambiguous: <n>` when bare links were left alone because several notes share the source's filename; list those under "Still to consider" in step 7.
-   3. Archive the source, never delete it: `python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" --vault "<vault>" "01. Inbox/<source name>.md" "<archive folder>" archived`.
-   4. Set the target to review in place: `python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" --vault "<vault>" "<target path>" "<target folder>" review`.
+   2. Change links to the source into links to the target, in every note: `python3 "${CLAUDE_SKILL_DIR}/scripts/relink.py" "01. Inbox/<source name>.md" "<target name>"`. It prints one `changed:` line per rewritten note, and `skipped-ambiguous: <n>` when bare links were left alone because several notes share the source's filename; list those under "Still to consider" in step 7.
+   3. Archive the source, never delete it: `python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" "01. Inbox/<source name>.md" "<archive folder>" archived`.
+   4. Set the target to review in place: `python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" "<target path>" "<target folder>" review`.
 
    Exit 3 in any of these steps: stop this merge (do not run the next merge steps), leave the source where it is, and report the error text in step 7.
 
