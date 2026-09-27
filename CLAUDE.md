@@ -26,11 +26,12 @@ This file is only loaded while developing inside this repo, never while a skill 
 
 ## Scripts
 
-- Script-first rules from the user `CLAUDE.md` apply: Bash and awk that run in Git Bash, compact machine-friendly output, quiet on success, non-zero exit on findings.
-- Exception: `lint.sh` changes files without an approved dry-run first, because the user chose that for lint. It still has `--dry-run`, used by the tests.
-- A change to `lint.sh` needs `plugins/wiki-lint/tests/run.sh` to pass.
-- A change to `find.sh` needs `plugins/wiki-query/tests/run.sh` to pass.
-- Only wiki-lint and wiki-query have `scripts/` and `tests/`. Other plugins get them only when a real need shows up.
+- Script-first rules from the user `CLAUDE.md` apply: Python 3 standard library only (no pip packages), invoked as `python3`. Readable code the user can edit. Compact machine-friendly output, quiet on success, non-zero exit on findings.
+- Exception: `lint.py` changes files without an approved dry-run first, because the user chose that for lint. It still has `--dry-run`, used by the tests.
+- Every plugin has `scripts/vault.py` and `tests/test_vault.py`, byte-identical in all plugins. Never edit one copy alone: change every copy the same way, then run `python3 tests/check_vault_copies.py`.
+- Skill-only scripts live in `skills/<skill>/scripts/`.
+- Tests are `unittest` at `plugins/<plugin>/tests/<skill>/test_<skill>.py`, with fixtures next to them. Run them with `python3 -m unittest discover -s plugins/<plugin>/tests -t plugins/<plugin>`.
+- A change to a script needs the tests of its plugin to pass.
 
 ## Versioning
 

@@ -20,6 +20,18 @@ Together the plugins form a knowledge cycle. Research and writing produce `draft
 
 ## Install and usage guide
 
+### Requirements
+
+The plugins run small Python scripts. You need Python 3.13 or newer, available as the command `python3`. The scripts use the standard library only, so there are no pip packages to install.
+
+- **Windows:** the python.org installer does not create `python3`. Install Python from the Microsoft Store, or run `winget install Python.Python.3.13`; both provide `python3`. If `python3` opens the Store instead, check Settings, Apps, Advanced app settings, App execution aliases.
+- **macOS:** `brew install python`. The Xcode Command Line Tools (`xcode-select --install`) also provide `python3`, but check the version: it can be older than 3.13.
+- **Linux:** usually preinstalled. If it is missing or older than 3.13, install a newer `python3` with your package manager.
+
+Check it with `python3 --version`.
+
+Each plugin has a README with its skills and what its scripts do: [wiki-vault](plugins/wiki-vault/README.md), [wiki-save](plugins/wiki-save/README.md), [wiki-ingest](plugins/wiki-ingest/README.md), [wiki-lint](plugins/wiki-lint/README.md) and [wiki-query](plugins/wiki-query/README.md).
+
 ### Install
 
 At user scope, so the skills work in every project:
