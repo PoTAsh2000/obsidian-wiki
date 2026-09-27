@@ -73,6 +73,9 @@ def read_vault(config=None):
 
 
 def main(argv):
+    # UTF-8 and LF output on every OS: Windows pipes default to cp1252 and CRLF.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", newline="\n")
     if argv in (["-h"], ["--help"]):
         print(__doc__.strip())
         return 0
