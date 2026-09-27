@@ -221,8 +221,8 @@ def save(mode, vault, title, draft):
 
 
 def main(argv):
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
+    sys.stderr.reconfigure(encoding="utf-8", newline="\n")
     if argv[:1] in (["-h"], ["--help"]):
         print(__doc__.strip())
         return 0

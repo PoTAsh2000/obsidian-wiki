@@ -88,7 +88,7 @@ def all_topics(vault):
 
 
 def main(argv):
-    sys.stdout.reconfigure(encoding="utf-8")  # topics and CLAUDE.md may hold non-ASCII text
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")  # topics and CLAUDE.md may hold non-ASCII text
     if argv in (["-h"], ["--help"]):
         print(__doc__.strip())
         return 0
