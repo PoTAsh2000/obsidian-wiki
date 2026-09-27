@@ -60,15 +60,7 @@ class StatusTest(unittest.TestCase):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def header(self, found):
-        return "\n".join([
-            f"vault: {self.vault.as_posix()}",
-            "--- vault CLAUDE.md ---",
-            "# Vault rules",
-            "Keep notes short.",
-            "--- end CLAUDE.md ---",
-            f"found: {found}",
-            "--- result ---",
-        ])
+        return f"found: {found}"
 
     def test_found_separate_arguments(self):
         self.assertEqual(run(SCRIPT, self.home, "review", "draft")[:2],
@@ -125,6 +117,12 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("SYSTEM ERROR:", err)
 
+    def test_no_vault_claude_md_printed(self):
+        out = run(SCRIPT, self.home, "review")[1]
+        self.assertNotIn("--- vault CLAUDE.md ---", out)
+        self.assertNotIn("Keep notes short.", out)
+        self.assertNotIn("vault: ", out)
+
     def test_system_error_without_vault_py(self):
         plugin = self.tmp / "plug"
         script = plugin / "skills" / "status" / "scripts" / "status.py"
@@ -132,7 +130,7 @@ class StatusTest(unittest.TestCase):
         shutil.copy(SCRIPT, script)
         code, _, err = run(script, self.home, "review")
         self.assertEqual(code, 1)
-        self.assertIn("SYSTEM ERROR: status.py: vault.py not found", err)
+        self.assertIn("ModuleNotFoundError: No module named 'vault'", err)
 
     def test_zz_vault_unchanged(self):
         self.assertEqual(tree_hash(self.vault), self.before)

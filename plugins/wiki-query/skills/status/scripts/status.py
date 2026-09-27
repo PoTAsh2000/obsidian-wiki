@@ -2,8 +2,8 @@
 """usage: status.py <status>...
 
 List notes in the configured Obsidian vault by frontmatter status. Read-only.
-Reads the vault path with ../../../scripts/vault.py, prints the vault
-CLAUDE.md and the lookup result. Run by the status skill.
+Gets the vault with require_vault() from ../../../scripts/vault.py and
+prints the lookup result. Run by the status skill.
 
 arguments:
   <status>  one or more of draft, review, evergreen, archived (any word of
@@ -11,14 +11,13 @@ arguments:
             space-separated argument.
 
 output (stdout):
-  vault: <path>, then the vault CLAUDE.md between "--- vault CLAUDE.md ---"
-  and "--- end CLAUDE.md ---", then found: yes|no, then the lookup result
-  after "--- result ---".
-  A user error prints one line "ERROR: <message>" instead, with exit 0.
+  found: yes|no, then the lookup result.
+  A user error or a vault problem prints one line "ERROR: <message>"
+  instead, with exit 0.
 
 exit codes:
   0  done (also for "Nothing found." and for ERROR: lines)
-  1  system error (vault.py missing, a file cannot be read)
+  1  system error (a file cannot be read)
   2  bad usage (unknown option)
 
 example: status.py review draft
@@ -29,13 +28,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-try:
-    from vault import MARKER, VaultError, read_vault
-except ImportError:
-    MARKER = VaultError = read_vault = None
+from vault import require_vault  # noqa: E402
 
-END_MARKER = "--- end CLAUDE.md ---"
-RESULT_MARKER = "--- result ---"
 STATUS_WORD = re.compile(r"[A-Za-z0-9_-]+", re.ASCII)
 # Folders at the vault root that are never searched. Dot folders are skipped at any depth.
 SKIPPED_ROOT_FOLDERS = {"Attachments", "90. Templates"}
@@ -148,15 +142,8 @@ def run(argv):
     if words is None:
         print(__doc__.strip())
         return 0
-    if read_vault is None:
-        print("SYSTEM ERROR: status.py: vault.py not found in the plugin scripts folder", file=sys.stderr)
-        return 1
 
-    try:
-        vault = read_vault()
-    except VaultError as err:
-        print(f"ERROR: {err}")
-        return 0
+    vault = require_vault()
     if not words:
         print("ERROR: no status given")
         return 0
@@ -166,18 +153,12 @@ def run(argv):
             return 0
 
     try:
-        rules = (vault / "CLAUDE.md").read_text(encoding="utf-8-sig")
         found, result = lookup(vault, words)
     except OSError as err:
         print(f"SYSTEM ERROR: status.py: {err}", file=sys.stderr)
         return 1
 
-    print(f"vault: {vault.as_posix()}")
-    print(MARKER)
-    print(rules.rstrip("\n"))
-    print(END_MARKER)
     print(f"found: {'yes' if found else 'no'}")
-    print(RESULT_MARKER)
     print("\n".join(result))
     return 0
 
