@@ -185,8 +185,8 @@ def run(argv):
 
 def main(argv):
     # Note paths can hold any character; the Windows console default codepage cannot.
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
+    sys.stderr.reconfigure(encoding="utf-8", newline="\n")
     try:
         return run(argv)
     except Exit as stop:
