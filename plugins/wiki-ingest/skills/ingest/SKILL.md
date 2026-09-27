@@ -2,7 +2,7 @@
 name: ingest
 description: Processes draft notes in the Obsidian vault Inbox (01. Inbox) after an approved plan - fixes frontmatter, adds links, picks a destination folder or merge, moves them out of the Inbox and sets status review. Use when the user asks to process, ingest or sort their inbox or a draft note in their vault.
 argument-hint: "[all | note name]"
-allowed-tools: Bash(bash "${CLAUDE_SKILL_DIR}/scripts/*)
+allowed-tools: Bash(python3 *)
 ---
 
 # wiki-ingest:ingest
@@ -15,10 +15,10 @@ Scripts: deterministic work runs in the scripts below; you only do the judgment 
 
 ## 1. Vault path and vault rules
 
-!`bash "${CLAUDE_SKILL_DIR}/scripts/context.sh"`
+!`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
 
 - The output above starts with `ERROR:`: reply with the text after `ERROR: ` exactly as it is, and stop.
-- Otherwise `vault:` is the vault path, and the text after `----- vault CLAUDE.md -----` is the vault `CLAUDE.md`. Read it now and follow it: folders, frontmatter schema, allowed `type` values, merge and archive rules, never delete, keep the filename when moving, English without em dashes. If it says to read another file first (for example `Home.md`), read that too.
+- Otherwise `vault:` is the vault path, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it: folders, frontmatter schema, allowed `type` values, merge and archive rules, never delete, keep the filename when moving, English without em dashes. If it says to read another file first (for example `Home.md`), read that too.
 
 Never ask for the vault path and never write it; only `wiki-vault` does that.
 
@@ -38,7 +38,7 @@ Show nothing of lint's result to the user at this point: no summary, no list of 
 Run, with `all`, the note name from the arguments, or nothing when there is no argument:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/select.sh" --vault "<vault>" ["all" | "<note name>"]
+python3 "${CLAUDE_SKILL_DIR}/scripts/select.py" --vault "<vault>" ["all" | "<note name>"]
 ```
 
 It prints `candidate:` lines (drafts directly in `01. Inbox`), `candidates: <n>`, then one `note:` line per other note with its `status`, `aliases` and `title` (only when it differs from the filename). A `same name:` part on a candidate lists other notes with the same filename. An `index:` line means the vault is too big to list every note; search the vault for link targets beyond the list.
@@ -93,16 +93,16 @@ Finish each note completely before starting the next, without asking the user an
 2. Folder destination only, and not a merge source (a merge source is archived in item 4; a `keep` note stays `draft` in `01. Inbox`, no call):
 
    ```bash
-   bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<name>.md" "<folder>" review
+   python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" --vault "<vault>" "01. Inbox/<name>.md" "<folder>" review
    ```
 
    It moves the note with its filename unchanged and sets `status: review`, then prints `path:` (after the move) and `status:`. Exit 3 (for example a name clash found now): nothing moved and the note stays `draft` in `01. Inbox`; note the error for step 7 and continue.
 3. Apply the approved orphan rows for this note.
 4. For an approved merge, in this order (with several targets, links go to the first one):
    1. Add the source's content to the target and the source's title to the target's `aliases` (Edit).
-   2. Change links to the source into links to the target, in every note: `bash "${CLAUDE_SKILL_DIR}/scripts/relink.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<target name>"`. It prints one `changed:` line per rewritten note, and `skipped-ambiguous: <n>` when bare links were left alone because several notes share the source's filename; list those under "Still to consider" in step 7.
-   3. Archive the source, never delete it: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "01. Inbox/<source name>.md" "<archive folder>" archived`.
-   4. Set the target to review in place: `bash "${CLAUDE_SKILL_DIR}/scripts/promote.sh" --vault "<vault>" "<target path>" "<target folder>" review`.
+   2. Change links to the source into links to the target, in every note: `python3 "${CLAUDE_SKILL_DIR}/scripts/relink.py" --vault "<vault>" "01. Inbox/<source name>.md" "<target name>"`. It prints one `changed:` line per rewritten note, and `skipped-ambiguous: <n>` when bare links were left alone because several notes share the source's filename; list those under "Still to consider" in step 7.
+   3. Archive the source, never delete it: `python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" --vault "<vault>" "01. Inbox/<source name>.md" "<archive folder>" archived`.
+   4. Set the target to review in place: `python3 "${CLAUDE_SKILL_DIR}/scripts/promote.py" --vault "<vault>" "<target path>" "<target folder>" review`.
 
    Exit 3 in any of these steps: stop this merge (do not run the next merge steps), leave the source where it is, and report the error text in step 7.
 
@@ -123,7 +123,7 @@ Ingest fixes nothing more itself; any further fix is a new ingest run.
 
 ## 8. Final list
 
-Always end with the notes that went from `draft` to `review` (the `path:` of each successful `promote.sh ... review` call for a draft), one path from the vault root per line in backticks. The backticks stop Markdown from reading a folder number like `30.` as a numbered list:
+Always end with the notes that went from `draft` to `review` (the `path:` of each successful `promote.py ... review` call for a draft), one path from the vault root per line in backticks. The backticks stop Markdown from reading a folder number like `30.` as a numbered list:
 
 ```
 Moved from draft to review:
