@@ -4,7 +4,7 @@ description: Configure the Obsidian vault folder once for all obsidian-wiki plug
 argument-hint: "[vault path]"
 model: haiku
 effort: low
-allowed-tools: Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/*)
+allowed-tools: Bash(python3 *)
 ---
 
 # Add the vault path
