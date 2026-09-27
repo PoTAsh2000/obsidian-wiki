@@ -22,11 +22,11 @@ Together the plugins form a knowledge cycle. Research and writing produce `draft
 
 ### Requirements
 
-The plugins run small Python scripts. You need Python 3.13 or newer, available as the command `python3`. The scripts use the standard library only, so there are no pip packages to install.
+The plugins run small Python scripts. You need Python 3.10 or newer, available as the command `python3`. The scripts use the standard library only, so there are no pip packages to install.
 
-- **Windows:** the python.org installer does not create `python3`. Install Python from the Microsoft Store, or run `winget install Python.Python.3.13`; both provide `python3`. If `python3` opens the Store instead, check Settings, Apps, Advanced app settings, App execution aliases.
-- **macOS:** `brew install python`. The Xcode Command Line Tools (`xcode-select --install`) also provide `python3`, but check the version: it can be older than 3.13.
-- **Linux:** usually preinstalled. If it is missing or older than 3.13, install a newer `python3` with your package manager.
+- **Windows:** the python.org installer does not create `python3`. Install Python from the Microsoft Store, which provides `python3`. If `python3` opens the Store instead, check Settings, Apps, Advanced app settings, App execution aliases.
+- **macOS:** `brew install python`. The Xcode Command Line Tools (`xcode-select --install`) also provide `python3`, but check the version: it can be older than 3.10.
+- **Linux:** usually preinstalled. If it is missing or older than 3.10, install a newer `python3` with your package manager.
 
 Check it with `python3 --version`.
 
