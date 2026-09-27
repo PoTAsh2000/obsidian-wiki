@@ -118,6 +118,9 @@ def add(argv):
 
 
 def main(argv):
+    # UTF-8 and LF output on every OS: Windows pipes default to cp1252 and CRLF.
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
+    sys.stderr.reconfigure(encoding="utf-8", newline="\n")
     try:
         add(argv)
     except Fail as err:
