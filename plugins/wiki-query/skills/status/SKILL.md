@@ -5,8 +5,8 @@ argument-hint: "<status>..."
 model: haiku
 effort: low
 allowed-tools:
-  - Bash(bash "${CLAUDE_SKILL_DIR}/scripts/status.sh")
-  - Bash(bash "${CLAUDE_SKILL_DIR}/scripts/status.sh" *)
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/status.py")
+  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/status.py" *)
 ---
 
 # Find notes by status
@@ -15,18 +15,18 @@ Read-only. Lists matching notes in the vault and changes nothing. Never write to
 
 The script below already read the vault path from `~/.claude/obsidian-wiki/vault-path`, read the vault `CLAUDE.md` and ran the lookup:
 
-!`bash "${CLAUDE_SKILL_DIR}/scripts/status.sh" "$ARGUMENTS"`
+!`python3 "${CLAUDE_SKILL_DIR}/scripts/status.py" "$ARGUMENTS"`
 
 ## What to do
 
 1. Read the vault `CLAUDE.md` above, between `--- vault CLAUDE.md ---` and `--- end CLAUDE.md ---`. Its rules win over this skill on any difference, except that this skill never writes to the vault.
-2. Output starts with `ERROR: Vault path is missing.`, `ERROR: Vault folder not found` or `ERROR: The vault folder`: reply with the text after `ERROR: ` exactly, and stop.
+2. Output starts with `ERROR: Vault path is missing.` or `ERROR: The configured vault folder`: reply with the text after `ERROR: ` exactly, and stop.
 3. Output is `ERROR: no status given`: if arguments were passed to this skill, run the command in step 5 with them. Otherwise ask for one or more statuses, separated by spaces, then run the command in step 5.
 4. Output starts with `ERROR: invalid status`: show that line to the user, ask for a corrected status, then run the command in step 5.
 5. Command, only for steps 3 and 4:
 
    ```bash
-   bash "${CLAUDE_SKILL_DIR}/scripts/status.sh" <status>...
+   python3 "${CLAUDE_SKILL_DIR}/scripts/status.py" <status>...
    ```
 
    Handle its output with steps 1 to 6. If it exits 1 or 2, show its stderr line to the user and stop; do not retry.
