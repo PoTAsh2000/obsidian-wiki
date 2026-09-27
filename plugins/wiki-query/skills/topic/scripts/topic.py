@@ -170,5 +170,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")  # note paths may hold non-ASCII on Windows
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")  # note paths may hold non-ASCII on Windows
     sys.exit(main(sys.argv[1:]))
