@@ -4,9 +4,7 @@ description: List notes in the user's Obsidian vault whose filename or title con
 argument-hint: "<text>"
 model: haiku
 effort: low
-allowed-tools:
-  - Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py")
-  - Bash(python3 "${CLAUDE_PLUGIN_ROOT}/skills/name/scripts/name.py" *)
+allowed-tools: Bash(python3 *)
 ---
 
 # Find notes by name
