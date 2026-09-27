@@ -206,6 +206,9 @@ def score_note(path, lines, terms):
 
 
 def main(argv):
+    # UTF-8 and LF output on every OS: Windows pipes default to cp1252 and CRLF.
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")
+    sys.stderr.reconfigure(encoding="utf-8", newline="\n")
     try:
         parsed = parse_args(argv)
     except UsageError as err:
