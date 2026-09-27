@@ -4,7 +4,7 @@ description: List notes in the user's Obsidian vault by frontmatter topic, one b
 argument-hint: "<topic>..."
 model: haiku
 effort: low
-allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"), Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/topic.py" *)
+allowed-tools: Bash(python3 *)
 ---
 
 # Find notes by topic
