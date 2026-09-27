@@ -70,12 +70,12 @@ class NameSkillTest(unittest.TestCase):
     # vault path missing, empty, folder missing, no CLAUDE.md
     def test_no_conf(self):
         self.check(VAULT_PY, [], 0, f"ERROR: {MISSING}", "")
-        self.check(NAME_PY, ["context"], 3, "", f"USER ERROR: {MISSING}")
+        self.check(NAME_PY, ["context"], 0, f"ERROR: {MISSING}", "")
 
     def test_empty_conf(self):
         self.set_conf("  \r\n\n")
         self.check(VAULT_PY, [], 0, f"ERROR: {MISSING}", "")
-        self.check(NAME_PY, ["context"], 3, "", "USER ERROR: Vault path is missing")
+        self.check(NAME_PY, ["context"], 0, f"ERROR: {MISSING}", "")
 
     def test_no_folder(self):
         gone = (self.tmp / "gone").as_posix()
@@ -83,14 +83,16 @@ class NameSkillTest(unittest.TestCase):
         res = self.check(VAULT_PY, [], 0)
         self.assertTrue(res.stdout.startswith(f"ERROR: The configured vault folder has no CLAUDE.md: {gone}"))
         self.assertIn("/wiki-vault:overwrite", res.stdout)
-        self.check(NAME_PY, ["context"], 3, "", "USER ERROR: The configured vault folder has no CLAUDE.md")
+        res = self.check(NAME_PY, ["context"], 0, err="")
+        self.assertTrue(res.stdout.startswith(f"ERROR: The configured vault folder has no CLAUDE.md: {gone}"))
 
     def test_no_claude_md(self):
         nocm = (self.tmp / "nocm").as_posix()
         self.set_conf(nocm + "\n")
         self.check(VAULT_PY, [], 0, f"ERROR: The configured vault folder has no CLAUDE.md: {nocm}. "
                    "Use /wiki-vault:overwrite <vault path> to fix the vault path.", "")
-        self.check(NAME_PY, ["context"], 3, "", "USER ERROR: The configured vault folder has no CLAUDE.md")
+        self.check(NAME_PY, ["context"], 0, f"ERROR: The configured vault folder has no CLAUDE.md: {nocm}. "
+                   "Use /wiki-vault:overwrite <vault path> to fix the vault path.", "")
 
     # configured vault, CRLF and surrounding spaces in the vault-path file
     def test_vault_ok(self):
@@ -127,8 +129,8 @@ class NameSkillTest(unittest.TestCase):
         scripts = self.tmp / "plug" / "skills" / "name" / "scripts"
         scripts.mkdir(parents=True)
         shutil.copy(NAME_PY, scripts)
-        self.check(scripts / "name.py", ["context"], 1, "",
-                   "SYSTEM ERROR: name.py: plugin script not found")
+        res = self.check(scripts / "name.py", ["context"], 1, "")
+        self.assertIn("No module named 'vault'", res.stderr)
 
     # read-only: the vault copy is unchanged
     def test_read_only(self):

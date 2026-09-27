@@ -15,8 +15,8 @@ Read-only. Lists matching notes in the vault and changes nothing. Never write to
 
 !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
 
-- If the line above starts with `ERROR:`, reply with the text after `ERROR: ` exactly and stop.
-- Otherwise it shows the vault path and the vault `CLAUDE.md`, which you have now read. Its rules win over this skill on any difference, except that this skill never writes to the vault.
+- Output starts with `ERROR:`: reply with the text after `ERROR: ` exactly and stop.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Do not read that file again. Its rules win over this skill on any difference, except that this skill never writes to the vault.
 
 ## 2. Run the lookup
 
@@ -26,11 +26,12 @@ Search text: `$ARGUMENTS`
 - Otherwise run exactly this Bash command, with the search text in double quotes (escape `"`, `$` and backticks in it with a backslash):
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/name/scripts/name.py" -- "<search text>"
+python3 "${CLAUDE_SKILL_DIR}/scripts/name.py" -- "<search text>"
 ```
+
+Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop.
 
 ## 3. Report
 
 - Exit 0: show stdout exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes. `Nothing found.` is a normal result.
-- Exit 3 (`USER ERROR:`): reply with the text after `USER ERROR: ` exactly and stop.
 - Exit 1 or 2 (`SYSTEM ERROR:`): fix the call once if the message shows how (run `name.py --help` for usage), otherwise show the error line and stop.

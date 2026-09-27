@@ -13,12 +13,12 @@ output (relay as printed):
   No filename or title matches "<text>". Found through aliases:
   - <path> (alias: <alias>)                    alias fallback
   Nothing found.                               no match (still exit 0)
+  ERROR: <message>                             vault problem (path missing, no CLAUDE.md)
 
 exit codes:
-  0  lookup done (matches or "Nothing found.")
-  1  system error (vault.py missing, a note cannot be read)
+  0  lookup done (matches or "Nothing found."), or an ERROR line for a vault problem
+  1  system error (a note cannot be read, or vault.py is missing)
   2  bad usage (no text given)
-  3  user error (vault path missing, vault folder or its CLAUDE.md missing)
 
 example: name.py -- context engineering
 """
@@ -30,10 +30,7 @@ from pathlib import Path
 
 # vault.py lives in the plugin scripts folder, three levels up from this file.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-try:
-    from vault import read_vault, VaultError
-except ImportError:
-    read_vault = None
+from vault import require_vault  # noqa: E402
 
 USAGE = "usage: name.py [--] <text>..."
 # Folders at the vault root that are not notes. Dot folders are skipped everywhere.
@@ -151,13 +148,9 @@ def main(argv):
     text = " ".join(argv)
     if not text.strip():
         return fail("SYSTEM ERROR", f"name.py: text is empty. {USAGE}", 2)
-    if read_vault is None:
-        return fail("SYSTEM ERROR", "name.py: plugin script not found: vault.py", 1)
+    vault = require_vault()
     try:
-        vault = read_vault()
         print("\n".join(lookup(vault, text)))
-    except VaultError as err:
-        return fail("USER ERROR", str(err), 3)
     except ReadError as err:
         return fail("SYSTEM ERROR", f"name.py: {err}", 1)
     return 0
