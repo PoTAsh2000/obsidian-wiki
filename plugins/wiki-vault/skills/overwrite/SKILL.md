@@ -25,5 +25,5 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/overwrite.py" "<path>"
 
 - Exit 0: output is `path: <path>` and `old: <old path or none>`. Reply `Vault configured: <path>`, and add ` (was: <old path>)` when `old` is not `none`.
 - Exit 3 with `USER ERROR: folder not found`: ask the user whether to configure it anyway. Yes: run the same command with `--force` before the path and reply as for exit 0. No: reply `Run /wiki-vault:overwrite later when you are ready to configure the vault.` and stop.
-- Other exit 3: show the error line to the user, ask once for a corrected absolute path and go back to step 2.
+- Other exit 3 (path empty, not absolute or with a line break): show the error line to the user, ask once for a corrected absolute path and go back to step 2.
 - Exit 1 or 2: fix the call once if the error shows how (see `overwrite.py --help`). Still failing: show the error line to the user and stop.

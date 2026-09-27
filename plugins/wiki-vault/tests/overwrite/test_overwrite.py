@@ -50,7 +50,6 @@ class OverwriteTest(unittest.TestCase):
         self.assertIn("SYSTEM ERROR:", res.stderr)
         self.assertRun([self.vault, self.other], 2, "")
         self.assertRun(["--nope", self.vault], 2, "")
-        self.assertRun([""], 2, "")
         self.assertConfig(None)
 
     def test_user_errors_write_nothing(self):
@@ -58,7 +57,11 @@ class OverwriteTest(unittest.TestCase):
         self.assertIn("USER ERROR: vault path is not absolute", res.stderr)
         res = self.assertRun([self.nope], 3, "")
         self.assertIn(f"USER ERROR: folder not found: {self.nope}", res.stderr)
-        self.assertRun(["/a\nb"], 3, "")
+        res = self.assertRun(["/a\nb"], 3, "")
+        self.assertIn("USER ERROR: vault path contains a line break", res.stderr)
+        res = self.assertRun([""], 3, "")
+        self.assertIn("USER ERROR: vault path is empty", res.stderr)
+        self.assertRun(["   "], 3, "")
         self.assertConfig(None)
 
     def test_save_sequence(self):
@@ -92,6 +95,11 @@ class OverwriteTest(unittest.TestCase):
         self.cfg.parent.mkdir(parents=True)
         self.cfg.write_bytes(f"{self.vault}\r\n".encode("utf-8"))
         self.assertRun([self.other], 0, f"path: {self.other}\nold: {self.vault}\n")
+
+    def test_system_error_when_old_config_unreadable(self):
+        self.cfg.mkdir(parents=True)
+        res = self.assertRun([self.vault], 1, "")
+        self.assertIn("SYSTEM ERROR: overwrite.py: cannot read", res.stderr)
 
     def test_system_error_when_config_folder_blocked(self):
         blocked = self.tmp / "blocked"

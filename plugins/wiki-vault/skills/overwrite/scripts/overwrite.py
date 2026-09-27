@@ -2,8 +2,8 @@
 """usage: overwrite.py [--force] <vault-path>
 
 Replace the vault path in ~/.claude/obsidian-wiki/vault-path, which all
-obsidian-wiki skills read. Never touches the vault itself. Backslashes become
-slashes and trailing slashes are removed before saving.
+obsidian-wiki skills read. Never touches the vault itself. vault.py cleans the
+path first: backslashes become slashes and trailing slashes are removed.
 
 arguments:
   <vault-path>  absolute path to the vault root, like C:/Notes/Vault or /home/me/Vault
@@ -17,21 +17,21 @@ output (exit 0):
 
 exit codes:
   0  saved (also when the path was already the same)
-  1  system error (cannot create the config folder or write the file)
+  1  system error (cannot read, create or write the config file)
   2  bad usage (wrong arguments)
-  3  user error (path not absolute, or folder not found without --force)
+  3  user error (path empty, not absolute or with a line break,
+     or folder not found without --force)
 
 example: overwrite.py "D:/Obsidian/MyVault"
 """
 
 import os
-import re
 import sys
 from pathlib import Path
 
 # vault.py lives in the plugin's scripts folder: plugins/wiki-vault/scripts.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import config_file, to_native  # noqa: E402
+from vault import VaultError, clean_path, config_file, stored_path, to_native  # noqa: E402
 
 USAGE = "usage: overwrite.py [--force] <vault-path>"
 
@@ -63,33 +63,24 @@ def parse_args(argv):
     return force, args[0]
 
 
-def normalize(raw):
-    """Backslashes to slashes, drop trailing slashes but keep a root like / or C:/."""
-    path = raw.replace("\\", "/")
-    while path.endswith("/") and path != "/" and not re.fullmatch(r"[A-Za-z]:/", path):
-        path = path[:-1]
-    return path
-
-
-def check(path, force):
-    """Raise Fail when the path cannot be saved."""
-    if not path:
-        raise Fail(2, "SYSTEM ERROR: overwrite.py: empty vault path")
-    if "\n" in path or "\r" in path:
-        raise Fail(3, "USER ERROR: vault path contains a line break")
-    if not (path.startswith("/") or re.match(r"[A-Za-z]:/", path)):
-        raise Fail(3, f"USER ERROR: vault path is not absolute: {path}")
+def check(raw, force):
+    """Return the cleaned path, or raise Fail when it cannot be saved."""
+    try:
+        path = clean_path(raw)
+    except VaultError as err:
+        raise Fail(3, f"USER ERROR: {err}")
     # to_native turns a Git Bash path like /c/Notes into C:/Notes on Windows.
     if not force and not Path(to_native(path)).is_dir():
         raise Fail(3, f"USER ERROR: folder not found: {path}")
+    return path
 
 
 def read_old(config):
-    """First line of the current config without CR, or an empty string."""
-    if not config.is_file():
-        return ""
-    lines = config.read_text(encoding="utf-8-sig").splitlines()
-    return lines[0] if lines else ""
+    """The currently stored path, or an empty string when there is none."""
+    try:
+        return stored_path(config)
+    except (OSError, UnicodeDecodeError) as err:
+        raise Fail(1, f"SYSTEM ERROR: overwrite.py: cannot read {config}: {err}")
 
 
 def save(config, path):
@@ -114,8 +105,7 @@ def main(argv):
     sys.stderr.reconfigure(encoding="utf-8", newline="\n")
     try:
         force, raw = parse_args(argv)
-        path = normalize(raw)
-        check(path, force)
+        path = check(raw, force)
         config = config_file()
         old = read_old(config)
         save(config, path)
