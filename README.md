@@ -30,8 +30,6 @@ The plugins run small Python scripts. You need Python 3.10 or newer, available a
 
 Check it with `python3 --version`.
 
-Each plugin has a README with its skills and what its scripts do: [wiki-vault](plugins/wiki-vault/README.md), [wiki-save](plugins/wiki-save/README.md), [wiki-ingest](plugins/wiki-ingest/README.md), [wiki-lint](plugins/wiki-lint/README.md) and [wiki-query](plugins/wiki-query/README.md).
-
 ### Install
 
 At user scope, so the skills work in every project:
