@@ -93,7 +93,7 @@ def note_statuses(path):
     Frontmatter only counts when the first line is ---. Supports inline values,
     [a, b] lists and indented "- item" lists below an empty "status:" key.
     """
-    lines = path.read_text(encoding="utf-8", errors="replace", newline="").split("\n")
+    lines = path.open(encoding="utf-8", errors="replace", newline="").read().split("\n")
     lines = [line[:-1] if line.endswith("\r") else line for line in lines]
     if not lines or not FENCE_LINE.match(lines[0]):
         return []
