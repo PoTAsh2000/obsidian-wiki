@@ -2,8 +2,9 @@
 """usage: tag.py ['<tag> <tag>...']
 
 List notes in the configured Obsidian vault by frontmatter tag, one block per tag.
-Read-only. Reads the vault path with vault.py, prints the vault CLAUDE.md, then
-the lookup result. Injected by the tag skill.
+Read-only. Gets the vault with require_vault() from vault.py and prints only the
+lookup result. Injected by the tag skill, after vault.py (which prints the vault
+CLAUDE.md).
 
 arguments:
   tags  one quoted string (or several arguments) with tags separated by spaces,
@@ -11,10 +12,8 @@ arguments:
         and other characters except spaces, quotes, brackets and shell symbols.
 
 output (stdout, key: value):
-  ERROR: <message>          soft fail, relay the message as-is
-  vault: <dir>              always first when the vault is usable
+  ERROR: <message>          vault problem or invalid tag, relay the message as-is
   need: tags                no tag given, ask the user for tags and rerun
-  --- vault CLAUDE.md ---   then the vault CLAUDE.md, up to the found: line
   found: yes|no             then the result: begin ... result: end block
 
 exit codes:
@@ -30,7 +29,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import MARKER, VaultError, read_vault  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 # Characters a tag may not contain: whitespace, quotes, brackets and shell symbols.
 BAD_TAG = re.compile(r"""[\[\]\s#,;|&<>(){}"'`$*?\\]""")
@@ -138,25 +137,20 @@ def main(argv):
     if argv[:1] in (["-h"], ["--help"]):
         print(__doc__.strip())
         return 0
+    vault = require_vault()
     try:
-        vault = read_vault()
         tags = parse_tags(argv)
-    except (VaultError, TagError) as err:
+    except TagError as err:
         print(f"ERROR: {err}")
         return 0
     if not tags:
-        print(f"vault: {vault.as_posix()}")
         print("need: tags")
         return 0
     try:
-        rules = (vault / "CLAUDE.md").read_text(encoding="utf-8-sig")
         hits = find_tagged(vault, tags)
     except OSError as err:
         print(f"SYSTEM ERROR: tag.py: cannot read the vault: {err}", file=sys.stderr)
         return 1
-    print(f"vault: {vault.as_posix()}")
-    print(MARKER)
-    print(rules.rstrip("\n"))
     print(f"found: {'yes' if any(hits) else 'no'}")
     print("result: begin")
     print("\n".join(result_lines(tags, hits)))

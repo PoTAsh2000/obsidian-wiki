@@ -83,16 +83,20 @@ class TagTest(unittest.TestCase):
     def test_no_tags(self):
         code, out, _ = self.run_tag()
         self.assertEqual(code, 0)
-        self.assertEqual(out, f"vault: {self.vault.as_posix()}\nneed: tags\n")
+        self.assertEqual(out, "need: tags\n")
 
     def test_several(self):
         code, out, _ = self.run_tag("ai", "tooling", "missing")
         self.assertEqual(code, 0)
-        self.assert_line(out, f"vault: {self.vault.as_posix()}")
         self.assert_line(out, "found: yes")
-        self.assert_line(out, "--- vault CLAUDE.md ---")
-        self.assert_line(out, "English only.")
         self.assertEqual(result_block(out), expected("tag-several.txt"))
+
+    def test_no_vault_output(self):
+        """vault.py prints the vault and its CLAUDE.md; tag.py prints only its own lines."""
+        out = self.run_tag("ai")[1]
+        self.assertTrue(out.startswith("found: yes\n"), out)
+        for line in ("--- vault CLAUDE.md ---", "English only.", f"vault: {self.vault.as_posix()}"):
+            self.assertNotIn(line, out.splitlines())
 
     def test_mixed_case_hash(self):
         self.assertEqual(result_block(self.run_tag("#AI")[1]), expected("tag-mixed-case.txt"))

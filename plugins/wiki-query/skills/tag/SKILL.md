@@ -11,15 +11,22 @@ effort: low
 
 Read-only. Lists matching notes in the vault and changes nothing. Never ask for the vault path and never write it; only `wiki-vault` does that.
 
-The lookup already ran:
+## 1. Read the vault CLAUDE.md
+
+!`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
+
+- Output starts with `ERROR:`: reply with the text after `ERROR: ` exactly and stop.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Do not read that file again. Its rules win over this skill on any difference, except that this skill never writes to the vault.
+
+## 2. The lookup already ran
 
 !`python3 "${CLAUDE_SKILL_DIR}/scripts/tag.py" '$ARGUMENTS'`
 
-## What to do with the output above
+Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop. The only exception is an invalid tag, see below.
 
-1. Read the vault CLAUDE.md first: it is the text after `--- vault CLAUDE.md ---`, up to the `found:` line. Its rules win over this skill on any difference, except that this skill never writes to the vault.
-2. Then act on the first matching case:
-   - A line `ERROR: <message>`: reply with `<message>` exactly. If the message is about an invalid tag, ask for corrected tags and rerun as below; otherwise stop.
-   - A line `need: tags`: ask the user for one or more tags, separated by spaces. Then run `python3 "${CLAUDE_SKILL_DIR}/scripts/tag.py" '<tags separated by spaces>'` (all tags in one pair of single quotes) and handle its output the same way.
-   - `found: yes` or `found: no`: show the lines between `result: begin` and `result: end` exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes. `found: no` means the output says "Nothing found."; that is a normal result.
-3. When you ran the script yourself and it exits 1 (`SYSTEM ERROR:`): run `python3 "${CLAUDE_SKILL_DIR}/scripts/tag.py" --help` once and fix the call; if it still fails, show the error and stop.
+Act on the first matching case:
+- A line `ERROR: <message>`: reply with `<message>` exactly. If the message is about an invalid tag, ask for corrected tags and rerun as below; otherwise stop.
+- A line `need: tags`: ask the user for one or more tags, separated by spaces. Then run `python3 "${CLAUDE_SKILL_DIR}/scripts/tag.py" '<tags separated by spaces>'` (all tags in one pair of single quotes) and handle its output the same way.
+- `found: yes` or `found: no`: show the lines between `result: begin` and `result: end` exactly as printed, in a code block. Do not add, remove, reorder or summarize lines, and do not open the notes. `found: no` means the output says "Nothing found."; that is a normal result.
+
+When you ran the script yourself and it exits 1 (`SYSTEM ERROR:`): run `python3 "${CLAUDE_SKILL_DIR}/scripts/tag.py" --help` once and fix the call; if it still fails, show the error and stop.
