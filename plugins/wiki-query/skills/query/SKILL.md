@@ -15,8 +15,8 @@ Gathered before this skill started (read the vault `CLAUDE.md` below first; the 
 
 !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
 
-- The first line starts with `ERROR:`: reply with the text after `ERROR: ` exactly as printed and stop.
-- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Its rules win over this skill on any difference, except that this skill never writes to the vault. Do not read that file again.
+- Output starts with `ERROR:`: reply with the text after `ERROR: ` exactly and stop.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Its rules win over this skill on any difference, except that this skill never writes to the vault. Do not read that file again.
 
 Never ask for the vault path and never write it; only `wiki-vault` does that.
 
@@ -25,13 +25,14 @@ Never ask for the vault path and never write it; only `wiki-vault` does that.
 Pick the key terms of the question plus synonyms, abbreviations and spelled-out forms (for example `EDI`, `EDIFACT`, `mapping`). Run exactly:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" --vault "<vault>" -- <term> <term> ...
+python3 "${CLAUDE_SKILL_DIR}/scripts/search.py" -- <term> <term> ...
 ```
 
 - Quote a multi-word phrase as one term. Add `--limit <n>` (max 200, before `--`) only when the default 20 is too few.
 - Output: `matches:` and one line per note, best first, with `score`, `status`, how many terms hit and where (`name`, `title`, `alias`, `tag`, `topic`, `body:<line hits>`). It already skips dot folders, `Attachments`, `90. Templates` and the vault `CLAUDE.md`.
 - `matches: 0` or weak hits only: run it once more with other synonyms. Use Grep on the vault only for something the script cannot match, such as a regex.
-- Exit 2: fix the call once (run `--help` if unclear). Exit 1: report the `SYSTEM ERROR:` line to the user and stop. Exit 3: the vault folder is gone; tell the user to fix it with `/wiki-vault:overwrite` and stop.
+- Exit 2: fix the call once (run `--help` if unclear). Exit 1: report the `SYSTEM ERROR:` line to the user and stop.
+- Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop.
 
 Read the best matches with Read, starting with notes that hit in `name`, `title` or `alias`. Follow `[[links]]` and `related` from those notes when they look relevant. Stop when the question is covered; do not read the whole vault. Notes in `99. Archived` count only when nothing else covers the question; say so when you use one.
 

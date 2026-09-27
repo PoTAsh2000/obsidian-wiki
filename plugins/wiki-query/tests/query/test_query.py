@@ -28,6 +28,16 @@ def run(script, *args, home=None):
     return proc.returncode, proc.stdout, proc.stderr
 
 
+def make_home(base, content=None):
+    """Temp HOME under base, with a vault-path file holding content when given."""
+    home = Path(base) / "home"
+    conf = home / ".claude" / "obsidian-wiki"
+    conf.mkdir(parents=True)
+    if content is not None:
+        (conf / "vault-path").write_bytes(content.encode("utf-8"))
+    return home
+
+
 def expected(case):
     return (EXPECTED / f"{case}.txt").read_text(encoding="utf-8")
 
@@ -49,13 +59,20 @@ class QueryTestCase(unittest.TestCase):
 
 
 class SearchTest(QueryTestCase):
+    """search.py with HOME pointing at a vault-path file that holds the fixture vault."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.home = make_home(self.tmp.name, str(FIXTURE))
+
     def check(self, case, *args):
-        code, out, _ = run(SEARCH, "--vault", str(FIXTURE), *args)
+        code, out, _ = run(SEARCH, *args, home=self.home)
         self.assertEqual(code, 0)
         self.assertEqual(out, expected(case))
 
     def check_code(self, want, prefix, *args):
-        code, _, err = run(SEARCH, *args)
+        code, _, err = run(SEARCH, *args, home=self.home)
         self.assertEqual(code, want)
         if prefix:
             self.assertTrue(err.startswith(prefix), err)
@@ -73,7 +90,7 @@ class SearchTest(QueryTestCase):
         self.check("search-dash-term", "--", "-orders")
 
     def test_limit_leading_zero(self):
-        self.check_code(2, "SYSTEM ERROR:", "--vault", str(FIXTURE), "--limit", "08", "edi")
+        self.check_code(2, "SYSTEM ERROR:", "--limit", "08", "edi")
 
     def test_help(self):
         self.check_code(0, None, "--help")
@@ -82,22 +99,28 @@ class SearchTest(QueryTestCase):
         self.check_code(0, None, "-h")
 
     def test_no_term(self):
-        self.check_code(2, "SYSTEM ERROR:", "--vault", str(FIXTURE))
+        self.check_code(2, "SYSTEM ERROR:")
 
     def test_no_vault(self):
-        self.check_code(2, "SYSTEM ERROR:", "edi")
+        home = make_home(Path(self.tmp.name) / "empty")
+        self.assertEqual(run(SEARCH, "edi", home=home)[:2], (0, MISSING + "\n"))
 
     def test_bad_limit(self):
-        self.check_code(2, "SYSTEM ERROR:", "--vault", str(FIXTURE), "--limit", "0", "edi")
+        self.check_code(2, "SYSTEM ERROR:", "--limit", "0", "edi")
 
     def test_bad_option(self):
-        self.check_code(2, "SYSTEM ERROR:", "--vault", str(FIXTURE), "--color", "edi")
+        self.check_code(2, "SYSTEM ERROR:", "--color", "edi")
 
     def test_empty_term(self):
-        self.check_code(2, "SYSTEM ERROR:", "--vault", str(FIXTURE), " ")
+        self.check_code(2, "SYSTEM ERROR:", " ")
 
     def test_missing_vault(self):
-        self.check_code(3, "USER ERROR:", "--vault", str(FIXTURE / "missing"), "edi")
+        missing = FIXTURE / "missing"
+        home = make_home(Path(self.tmp.name) / "gone", str(missing))
+        code, out, _ = run(SEARCH, "edi", home=home)
+        self.assertEqual(code, 0)
+        self.assertEqual(out, f"ERROR: The configured vault folder has no CLAUDE.md: {missing}. "
+                              "Use /wiki-vault:overwrite <vault path> to fix the vault path.\n")
 
 
 class ContextTest(QueryTestCase):
@@ -109,12 +132,7 @@ class ContextTest(QueryTestCase):
 
     def home(self, content=None):
         """Temp HOME, with a vault-path file when content is given."""
-        home = Path(self.tmp.name) / "home"
-        conf = home / ".claude" / "obsidian-wiki"
-        conf.mkdir(parents=True)
-        if content is not None:
-            (conf / "vault-path").write_bytes(content.encode("utf-8"))
-        return home
+        return make_home(self.tmp.name, content)
 
     def test_ok(self):
         code, out, _ = run(VAULT_PY, home=self.home(f"{FIXTURE}\r\n"))

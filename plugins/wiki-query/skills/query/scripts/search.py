@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""usage: search.py --vault <dir> [--limit <n>] <term>...
+"""usage: search.py [--limit <n>] <term>...
 
-Rank the notes in an Obsidian vault by how well they match the terms. Read-only.
+Rank the notes in the configured Obsidian vault by how well they match the terms. Read-only.
 Case-insensitive substring match on filename, first "# " title, aliases, tags,
 topic and body lines. Skips dot folders, Attachments, "90. Templates" and
-the vault root CLAUDE.md.
+the vault root CLAUDE.md. The vault comes from vault.py (require_vault).
 
 arguments:
-  --vault <dir>  vault root (required)
   --limit <n>    max notes to list, 1-200, default 20
   <term>...      one or more terms; quote a phrase as one term
 
 output (sorted by score, then path):
+  ERROR: <message>  vault problem (path missing or no CLAUDE.md), exit 0
   terms: <term>, ...
   matches: <notes with any hit>
   shown: <listed>
@@ -22,9 +22,8 @@ exit codes:
   0  searched (matches: 0 means nothing found)
   1  system error (cannot read a note)
   2  bad usage (missing or invalid argument)
-  3  user error (vault folder not found)
 
-example: search.py --vault "$HOME/Vault" "EDI" "mapping" "edifact"
+example: search.py "EDI" "mapping" "edifact"
 """
 
 import re
@@ -32,7 +31,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import to_native  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 DEFAULT_LIMIT = 20
 SKIP_ROOT_DIRS = {"Attachments", "90. Templates"}
@@ -53,21 +52,18 @@ class UsageError(Exception):
 
 
 def parse_args(argv):
-    """Return (vault, limit, terms), or None when help was printed."""
-    vault, limit, terms = "", str(DEFAULT_LIMIT), []
+    """Return (limit, terms), or None when help was printed."""
+    limit, terms = str(DEFAULT_LIMIT), []
     i = 0
     while i < len(argv):
         arg = argv[i]
         if arg in ("-h", "--help"):
             print(__doc__.strip())
             return None
-        if arg in ("--vault", "--limit"):
+        if arg == "--limit":
             if i + 1 >= len(argv):
-                raise UsageError("--vault needs a folder" if arg == "--vault" else "--limit needs a number")
-            if arg == "--vault":
-                vault = argv[i + 1]
-            else:
-                limit = argv[i + 1]
+                raise UsageError("--limit needs a number")
+            limit = argv[i + 1]
             i += 2
         elif arg == "--":
             terms += argv[i + 1:]
@@ -77,8 +73,6 @@ def parse_args(argv):
         else:
             terms.append(arg)
             i += 1
-    if not vault:
-        raise UsageError("no vault: pass --vault <dir>")
     if not LIMIT_RE.match(limit) or int(limit) > 200:
         raise UsageError(f"invalid --limit: {limit}")
     if not terms:
@@ -88,7 +82,7 @@ def parse_args(argv):
             raise UsageError("empty search term")
         if "\n" in term or "\t" in term:
             raise UsageError("search term contains a newline or tab")
-    return vault, int(limit), terms
+    return int(limit), terms
 
 
 def find_notes(root):
@@ -216,12 +210,8 @@ def main(argv):
         return 2
     if parsed is None:
         return 0
-    vault, limit, terms = parsed
-
-    root = Path(to_native(vault))
-    if not root.is_dir():
-        print(f"USER ERROR: search.py: vault folder not found: {vault}", file=sys.stderr)
-        return 3
+    limit, terms = parsed
+    root = require_vault()
 
     print(f"terms: {', '.join(terms)}")
     lowered = [term.lower() for term in terms]
