@@ -3,7 +3,7 @@ name: delete
 description: Remove the configured Obsidian vault folder for all obsidian-wiki plugins. Use when the user runs /wiki-vault:delete or asks to remove or forget their Obsidian vault path for the wiki skills.
 model: haiku
 effort: low
-allowed-tools: 'Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/delete.py")'
+allowed-tools: Bash(python3 *)
 ---
 
 # Delete the vault path
