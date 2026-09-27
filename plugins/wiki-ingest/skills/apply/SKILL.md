@@ -5,7 +5,7 @@ argument-hint: "[note name]"
 disable-model-invocation: true
 model: haiku
 effort: low
-allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"), Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/*)
+allowed-tools: Bash(python3 *)
 ---
 
 # wiki-ingest:apply
