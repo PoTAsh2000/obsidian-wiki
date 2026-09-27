@@ -18,10 +18,11 @@ output (stdout):
   evergreen: <path from vault root>   one line per changed note
   count: <n>                          number of changed notes (0 is a normal result)
   match: <path>                       exit 3 only, one line per note with that name
+  ERROR: <message>                    vault problem (path missing, no CLAUDE.md), exit 0
 
 exit codes:
-  0  done (count may be 0)
-  1  system error (vault path missing, edit failed)
+  0  done (count may be 0), or an ERROR line for a vault problem
+  1  system error (edit failed)
   2  bad usage (more than one argument)
   3  user error (no note with that name, several matches, status is not review)
 
@@ -37,7 +38,7 @@ from pathlib import Path
 
 # vault.py lives in the plugin scripts folder: plugins/wiki-ingest/scripts/.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import read_vault, VaultError  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 FENCE = re.compile(r"^---[ \t]*$")
 # Undecodable bytes survive a read and write unchanged.
@@ -163,10 +164,7 @@ def run(argv):
     if len(argv) > 1:
         raise Exit(2, f"SYSTEM ERROR: apply.py: expected at most one argument, got {len(argv)}. "
                       "Quote a name with spaces. See --help")
-    try:
-        vault = read_vault()
-    except VaultError as err:
-        raise system_error(str(err))
+    vault = require_vault()
 
     mode, arg = parse_argument(argv[0] if argv else "")
     selected = select(read_records(vault), mode, arg)

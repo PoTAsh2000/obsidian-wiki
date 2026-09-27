@@ -20,8 +20,8 @@ The vault path from `~/.claude/obsidian-wiki/vault-path` (configured by `wiki-va
 
 !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
 
-- A line starting with `ERROR: `: reply exactly the text after `ERROR: ` and stop.
-- Otherwise read the vault `CLAUDE.md` above and follow it. It is already loaded; do not open it again.
+- Output starts with `ERROR:`: reply with the text after `ERROR: ` exactly and stop.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Do not read that file again.
 
 Never ask for the vault path and never write it; only `wiki-vault` does that.
 
@@ -36,6 +36,8 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/apply.py" '$ARGUMENTS'
 ```
 
 Keep the argument in single quotes; write a `'` inside it as `'\''`. No argument changes every `review` note in the vault. A note name changes that one note, found by filename without `.md`, case-insensitive, in any folder except dot folders such as `.obsidian` or `.trash`.
+
+Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop.
 
 - **Exit 0:** go to step 3.
 - **Exit 3 with `match:` lines:** several notes have that name. List their paths, one per line in backticks, and ask which one. Then run the same command with the chosen path (for example `"30. Knowledge/Twin.md"`) in place of the name.

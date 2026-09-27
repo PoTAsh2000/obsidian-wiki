@@ -116,11 +116,18 @@ class ApplyErrorsTest(ApplyTestCase):
 
     def test_no_path(self):
         self.config.unlink()
-        self.expect(self.run_script(APPLY_PY), 1, "", "SYSTEM ERROR:")
+        self.expect(self.run_script(APPLY_PY), 0, MISSING)
+        self.expect(self.run_script(APPLY_PY, "Reviewed One"), 0, MISSING)
+
+    def test_empty_path(self):
+        self.set_path("")
+        self.expect(self.run_script(APPLY_PY), 0, MISSING)
 
     def test_no_claude_md(self):
         self.set_path(f"{self.tmp}\n")
-        self.expect(self.run_script(APPLY_PY), 1, "", "SYSTEM ERROR:")
+        rc, out, _ = self.run_script(APPLY_PY)
+        self.assertEqual(rc, 0)
+        self.assertTrue(out.startswith("ERROR: The configured vault folder has no CLAUDE.md"))
 
     def test_not_found(self):
         self.expect(self.run_script(APPLY_PY, "Missing"), 3, "", "USER ERROR:")
