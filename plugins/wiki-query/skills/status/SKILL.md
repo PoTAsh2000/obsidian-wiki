@@ -4,9 +4,7 @@ description: List notes in the user's Obsidian vault by frontmatter status (draf
 argument-hint: "<status>..."
 model: haiku
 effort: low
-allowed-tools:
-  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/status.py")
-  - Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/status.py" *)
+allowed-tools: Bash(python3 *)
 ---
 
 # Find notes by status
