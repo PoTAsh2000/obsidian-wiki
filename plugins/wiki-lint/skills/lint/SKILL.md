@@ -15,17 +15,17 @@ The vault path (from `~/.claude/obsidian-wiki/vault-path`, written only by `wiki
 
 !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
 
-- `ERROR: <message>` (no vault path configured, or the vault folder has no `CLAUDE.md`): reply with the message exactly as given and stop.
-- Otherwise the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Its rules win over this skill on any difference, except that lint only makes the two fixes above. Do not read it again.
+- Output starts with `ERROR:` (no vault path configured, or the vault folder has no `CLAUDE.md`): reply with the text after `ERROR: ` exactly and stop.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Its rules win over this skill on any difference, except that lint only makes the two fixes above. Do not read that file again.
 
 Never ask for the path and never write it.
 
 ## 2. Run the script
 
-Run exactly this once, with `<vault>` from the `vault:` line:
+Run exactly this once:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lint.py" --vault "<vault>" $ARGUMENTS
+python3 "${CLAUDE_SKILL_DIR}/scripts/lint.py" $ARGUMENTS
 ```
 
 - No arguments: full vault check and fixes.
@@ -33,6 +33,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/lint.py" --vault "<vault>" $ARGUMENTS
 - `--dry-run`: same JSON, no file changed. Use it when the user asks what lint would do.
 
 Run it straight away, no confirm: the user chose that lint fixes without asking. Never run `lint.py` any other way, and never edit notes to fix findings in this skill.
+
+Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop.
 
 Exit codes:
 

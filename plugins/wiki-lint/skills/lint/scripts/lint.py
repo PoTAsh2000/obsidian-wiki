@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""usage: lint.py --vault <dir> [--dry-run] [--files <path>...]
+"""usage: lint.py [--dry-run] [--files <path>...]
 
-Check an Obsidian vault against its CLAUDE.md and print one JSON object.
+Check the configured Obsidian vault (read through vault.py) against its
+CLAUDE.md and print one JSON object.
 Fixes two things without asking: moves draft notes outside "01. Inbox" into
 the Inbox and unlinks dead links. Everything else is only reported.
 
 options:
-  --vault <dir>      vault root, must contain CLAUDE.md (required)
   --dry-run          same JSON, no file changed
   --files <path>...  only these notes or folders, paths from the vault root;
                      skips orphans, duplicate names and inbox age
@@ -15,12 +15,15 @@ options:
 exit codes:
   0  clean, nothing fixed or found
   1  system error (write failed, internal error)
-  2  bad usage (unknown option, no --vault, --files without paths)
-  3  user error (vault or --files path not found, CLAUDE.md missing or
-     without the type and status lists)
+  2  bad usage (unknown option, --files without paths)
+  3  user error (--files path not found, CLAUDE.md without the type and
+     status lists)
   4  fixes or findings (normal result, read the JSON)
 
-example: lint.py --vault "C:/Vault" --files "30. Knowledge/Tokens.md" "01. Inbox/"
+A vault problem (no vault path, no CLAUDE.md) prints "ERROR: <message>" on
+stdout and exits 0, the same as every other obsidian-wiki script.
+
+example: lint.py --files "30. Knowledge/Tokens.md" "01. Inbox/"
 """
 
 import os
@@ -29,10 +32,10 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from vault import to_native  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from vault import require_vault  # noqa: E402
 
-USAGE = "usage: lint.py --vault <dir> [--dry-run] [--files <path>...]"
+USAGE = "usage: lint.py [--dry-run] [--files <path>...]"
 INBOX = "01. Inbox"
 ARCHIVE = "99. Archived"
 EXEMPT_TOPS = ("10. Daily", "90. Templates", ARCHIVE)  # no note checks, only dead links
@@ -193,20 +196,15 @@ def read_text(path):
 # ---------- arguments and vault rules ----------
 
 def parse_args(argv):
-    """Return (vault, dry_run, files_mode, files), or raise LintExit."""
-    vault, dry, files_mode, files = "", False, False, []
+    """Return (dry_run, files_mode, files), or raise LintExit."""
+    dry, files_mode, files = False, False, []
     i = 0
     while i < len(argv):
         arg = argv[i]
         if arg in ("-h", "--help"):
             sys.stdout.write(__doc__)
             raise LintExit(0, "")
-        if arg == "--vault":
-            if i + 1 >= len(argv):
-                raise usage_error("--vault needs a path")
-            vault = argv[i + 1]
-            i += 2
-        elif arg == "--dry-run":
+        if arg == "--dry-run":
             dry = True
             i += 1
         elif arg == "--files":
@@ -217,11 +215,9 @@ def parse_args(argv):
                 i += 1
         else:
             raise usage_error(f"unknown argument: {arg}")
-    if not vault:
-        raise usage_error("no vault path, pass --vault")
     if files_mode and not files:
         raise usage_error("--files needs at least one path")
-    return vault, dry, files_mode, files
+    return dry, files_mode, files
 
 
 def read_rules(text):
@@ -676,12 +672,8 @@ class Lint:
 
 def lint(argv):
     """Run the whole check and return the exit code."""
-    vault_arg, dry, files_mode, files = parse_args(argv)
-    vault = Path(to_native(vault_arg))
-    if not vault.is_dir():
-        raise user_error(f"vault not found: {vault_arg}")
-    if not (vault / "CLAUDE.md").is_file():
-        raise user_error(f"no CLAUDE.md in vault root: {vault_arg}")
+    dry, files_mode, files = parse_args(argv)
+    vault = require_vault()
     types, statuses = read_rules(read_text(vault / "CLAUDE.md"))
     sel = selection(vault, files)
     run = Lint(vault, files_mode, sel, types, statuses)

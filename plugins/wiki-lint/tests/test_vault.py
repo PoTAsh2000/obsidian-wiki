@@ -25,7 +25,10 @@ class VaultTest(unittest.TestCase):
     def run_main(self, argv):
         out = io.StringIO()
         with mock.patch.dict(vault.os.environ, {"HOME": str(self.tmp / "home")}), redirect_stdout(out):
-            code = vault.main(argv)
+            try:
+                code = vault.main(argv)
+            except SystemExit as stop:  # require_vault() exits on a vault problem
+                code = stop.code
         return code, out.getvalue()
 
     def test_missing_config(self):
@@ -65,6 +68,43 @@ class VaultTest(unittest.TestCase):
         run = subprocess.run([sys.executable, vault.__file__], env=env, capture_output=True)
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertTrue(run.stdout.endswith("café →\n".encode("utf-8")))
+
+    def test_require_vault_prints_error_and_exits_0(self):
+        out = io.StringIO()
+        with mock.patch.dict(vault.os.environ, {"HOME": str(self.tmp / "home")}), redirect_stdout(out):
+            with self.assertRaises(SystemExit) as caught:
+                vault.require_vault()
+        self.assertEqual(caught.exception.code, 0)
+        self.assertEqual(out.getvalue(), f"ERROR: {vault.MISSING}\n")
+
+    def test_require_vault_returns_path(self):
+        (self.vault / "CLAUDE.md").write_text("# Rules\n", encoding="utf-8")
+        self.config.write_text(str(self.vault), encoding="utf-8")
+        with mock.patch.dict(vault.os.environ, {"HOME": str(self.tmp / "home")}):
+            self.assertEqual(vault.require_vault(), self.vault)
+
+    def test_stored_path(self):
+        self.assertEqual(vault.stored_path(self.config), "")
+        self.config.write_text("\ufeff  D:/Notes  \r\nsecond\r\n", encoding="utf-8")
+        self.assertEqual(vault.stored_path(self.config), "D:/Notes")
+
+    def test_stored_path_uses_home(self):
+        self.config.write_text("/x/vault\n", encoding="utf-8")
+        with mock.patch.dict(vault.os.environ, {"HOME": str(self.tmp / "home")}):
+            self.assertEqual(vault.stored_path(), "/x/vault")
+
+    def test_clean_path(self):
+        self.assertEqual(vault.clean_path("C:\\Notes\\Vault\\"), "C:/Notes/Vault")
+        self.assertEqual(vault.clean_path(" /home/me/Vault// "), "/home/me/Vault")
+        self.assertEqual(vault.clean_path("C:/"), "C:/")
+        self.assertEqual(vault.clean_path("/"), "/")
+
+    def test_clean_path_rejects(self):
+        for raw, text in (("", "empty"), ("  ", "empty"), ("Notes/Vault", "not absolute"),
+                          ("C:Notes", "not absolute"), ("/a\nb", "line break")):
+            with self.assertRaises(vault.VaultError) as caught:
+                vault.clean_path(raw)
+            self.assertIn(text, str(caught.exception))
 
     def test_git_bash_path(self):
         with mock.patch.object(vault.sys, "platform", "win32"):
