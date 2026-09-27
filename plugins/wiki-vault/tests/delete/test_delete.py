@@ -19,11 +19,8 @@ class DeleteTest(unittest.TestCase):
         self.cfg = self.home / ".claude" / "obsidian-wiki" / "vault-path"
         self.cfg.parent.mkdir(parents=True)
 
-    def run_script(self, *args, home=True):
-        env = dict(os.environ)
-        env.pop("HOME", None)
-        if home:
-            env["HOME"] = str(self.home)
+    def run_script(self, *args):
+        env = dict(os.environ, HOME=str(self.home))
         return subprocess.run([sys.executable, str(SCRIPT), *args], env=env,
                               capture_output=True, text=True, encoding="utf-8")
 
@@ -82,12 +79,6 @@ class DeleteTest(unittest.TestCase):
         res = self.check(2, "", "extra")
         self.assert_system_error(res)
         self.assertTrue(self.cfg.exists())
-
-    def test_no_home(self):
-        res = self.run_script(home=False)
-        self.assertEqual(res.returncode, 1)
-        self.assertEqual(res.stdout, "")
-        self.assert_system_error(res)
 
     def test_not_a_file(self):
         self.cfg.mkdir()

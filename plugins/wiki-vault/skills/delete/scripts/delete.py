@@ -13,41 +13,32 @@ output (stdout, one line):
 
 exit codes:
   0  done (see output)
-  1  system error (HOME not set, file could not be read or removed)
+  1  system error (file could not be read or removed)
   2  bad usage (any argument)
 
 example: python3 delete.py
 """
 
-import os
 import sys
 from pathlib import Path
 
 # vault.py lives in the plugin scripts folder: plugins/wiki-vault/scripts/
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import config_file  # noqa: E402
+from vault import config_file, stored_path  # noqa: E402
 
 
 class DeleteError(Exception):
     """A system error: the message goes to stderr and the exit code is 1."""
 
 
-def configured_path(config):
-    """First line of the config file, trimmed. Empty string when blank."""
-    try:
-        lines = config.read_text(encoding="utf-8-sig").splitlines()
-    except (OSError, UnicodeDecodeError) as err:
-        raise DeleteError(f"cannot read {config}: {err}")
-    return lines[0].strip() if lines else ""
-
-
 def remove_config(config):
     """Remove the config file and return the path it held ('' when none)."""
+    try:
+        path = stored_path(config)
+    except (OSError, UnicodeDecodeError) as err:
+        raise DeleteError(f"cannot read the vault path file: {err}")
     if not config.exists():
         return ""
-    if not config.is_file():
-        raise DeleteError(f"{config} is not a regular file")
-    path = configured_path(config)
     try:
         config.unlink()
     except OSError as err:
@@ -67,10 +58,6 @@ def main(argv):
             return 0
         print("SYSTEM ERROR: delete.py: takes no arguments, see --help", file=sys.stderr)
         return 2
-    # config_file() would fall back to the OS home folder; keep the old strict check.
-    if not os.environ.get("HOME"):
-        print("SYSTEM ERROR: delete.py: HOME is not set", file=sys.stderr)
-        return 1
     try:
         path = remove_config(config_file())
     except DeleteError as err:
