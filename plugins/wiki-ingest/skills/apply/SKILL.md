@@ -5,7 +5,7 @@ argument-hint: "[note name]"
 disable-model-invocation: true
 model: haiku
 effort: low
-allowed-tools: Bash(bash "${CLAUDE_SKILL_DIR}/scripts/*)
+allowed-tools: Bash(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"), Bash(python3 "${CLAUDE_SKILL_DIR}/scripts/*)
 ---
 
 # wiki-ingest:apply
@@ -18,7 +18,7 @@ Arguments: `$ARGUMENTS`
 
 The vault path from `~/.claude/obsidian-wiki/vault-path` (configured by `wiki-vault`) and the vault `CLAUDE.md`:
 
-!`bash "${CLAUDE_SKILL_DIR}/scripts/gather.sh"`
+!`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
 
 - A line starting with `ERROR: `: reply exactly the text after `ERROR: ` and stop.
 - Otherwise read the vault `CLAUDE.md` above and follow it. It is already loaded; do not open it again.
@@ -32,7 +32,7 @@ What apply may change: only the frontmatter line `status: review`, into `status:
 Run exactly this, once:
 
 ```bash
-bash "${CLAUDE_SKILL_DIR}/scripts/apply.sh" '$ARGUMENTS'
+python3 "${CLAUDE_SKILL_DIR}/scripts/apply.py" '$ARGUMENTS'
 ```
 
 Keep the argument in single quotes; write a `'` inside it as `'\''`. No argument changes every `review` note in the vault. A note name changes that one note, found by filename without `.md`, case-insensitive, in any folder except dot folders such as `.obsidian` or `.trash`.
