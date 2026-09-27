@@ -26,12 +26,15 @@ This file is only loaded while developing inside this repo, never while a skill 
 
 ## Scripts
 
-- Script-first rules from the user `CLAUDE.md` apply: Python 3 standard library only (no pip packages), invoked as `python3`. Readable code the user can edit. Compact machine-friendly output, quiet on success, non-zero exit on findings.
+- Script-first rules from the user `CLAUDE.md` apply: Python 3.10+ standard library only (no pip packages), invoked as `python3`. Readable code the user can edit. Compact machine-friendly output, quiet on success, non-zero exit on findings.
+- Skill-only scripts live in `plugins/<plugin>/skills/<skill>/scripts/`. The only file in `plugins/<plugin>/scripts/` is `vault.py`, byte-identical in every plugin.
+- Every script gets the vault only through `require_vault()` from `vault.py`. No script takes a `--vault` option or reads the vault path file itself.
+- Only `vault.py` prints the vault path and the vault `CLAUDE.md`. Every skill except `wiki-vault` injects it as step 1.
+- A vault problem (path missing, no `CLAUDE.md`) is always one line `ERROR: <message>` on stdout with exit 0, in every script.
+- `wiki-vault` scripts find, read and clean the stored path only with `config_file()`, `stored_path()` and `clean_path()` from `vault.py`. None of them checks `HOME` itself.
 - Exception: `lint.py` changes files without an approved dry-run first, because the user chose that for lint. It still has `--dry-run`, used by the tests.
-- Every plugin has `scripts/vault.py` and `tests/test_vault.py`, byte-identical in all plugins. Never edit one copy alone: change every copy the same way, then run `python3 tests/check_vault_copies.py`.
-- Skill-only scripts live in `skills/<skill>/scripts/`.
-- Tests are `unittest` at `plugins/<plugin>/tests/<skill>/test_<skill>.py`, with fixtures next to them. Run them with `python3 -m unittest discover -s plugins/<plugin>/tests -t plugins/<plugin>`.
-- A change to a script needs the tests of its plugin to pass.
+- Tests are `unittest` in `plugins/<plugin>/tests/<skill>/`, with fixtures next to them. Run them with `python3 -m unittest discover -s plugins/<plugin>/tests -t plugins/<plugin>`. A change to a script needs the tests of its plugin to pass.
+- A change to `vault.py` goes to every copy (and `tests/test_vault.py` to every copy), then `python3 tests/check_vault_copies.py` must pass.
 
 ## Versioning
 
