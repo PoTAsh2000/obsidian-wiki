@@ -1,6 +1,8 @@
 """Tests for scripts/vault.py. Identical copy in every plugin at tests/test_vault.py."""
 
 import io
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -54,6 +56,15 @@ class VaultTest(unittest.TestCase):
     def test_bad_usage(self):
         with redirect_stdout(io.StringIO()), mock.patch("sys.stderr", io.StringIO()):
             self.assertEqual(vault.main(["--nope"]), 2)
+
+    def test_non_ascii_rules_piped(self):
+        (self.vault / "CLAUDE.md").write_text("café →\n", encoding="utf-8")
+        self.config.write_text(str(self.vault), encoding="utf-8")
+        env = {k: v for k, v in os.environ.items() if k != "PYTHONIOENCODING"}
+        env["HOME"] = str(self.tmp / "home")
+        run = subprocess.run([sys.executable, vault.__file__], env=env, capture_output=True)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(run.stdout.endswith("café →\n".encode("utf-8")))
 
     def test_git_bash_path(self):
         with mock.patch.object(vault.sys, "platform", "win32"):
