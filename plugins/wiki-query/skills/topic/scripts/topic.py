@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """topic.py: list vault notes by frontmatter topic. Read-only.
 
-usage: topic.py [--inject] <topic>...
+usage: topic.py <topic>...
 
 List notes in the configured Obsidian vault whose frontmatter topic matches,
 one block per topic (case-insensitive, exact value). Read-only.
@@ -14,22 +14,20 @@ and "90. Templates".
 
 arguments:
   <topic>...  one or more topics, space separated
-  --inject    for !`...` injection: report user errors as "ERROR: <text>" on
-              stdout with exit 0, so the skill does not abort
   -h, --help  show this help
 
 output:
   "<topic>:" blocks with "- <note path>" lines, or "Nothing found.".
   A topic without notes gets "- nothing found" when another topic has notes.
   No topics: "ERROR: no topic given" (soft fail, exit 0).
+  Vault problem (path missing, no CLAUDE.md): "ERROR: <message>" (exit 0).
 
 exit codes:
   0  done (also when nothing is found)
-  1  system error (cannot read the vault)
+  1  system error (cannot read the notes)
   2  bad usage (unknown option)
-  3  user error (vault path missing, vault folder or its CLAUDE.md missing)
 
-examples: topic.py EDI      topic.py ai tooling      topic.py --inject EDI
+examples: topic.py EDI      topic.py ai tooling
 """
 
 import re
@@ -37,13 +35,13 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import read_vault, VaultError  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 SKIP_ROOT_DIRS = {"Attachments", "90. Templates"}
 FENCE = re.compile(r"^---[ \t]*$")
 KEY_LINE = re.compile(r"^([A-Za-z_]+):[ \t]*(.*)$")
 LIST_ITEM = re.compile(r"^[ \t]*-[ \t]*(.*)$")
-USAGE = "usage: topic.py [--inject] <topic>... | --help"
+USAGE = "usage: topic.py <topic>... | --help"
 
 
 class UsageError(Exception):
@@ -51,17 +49,14 @@ class UsageError(Exception):
 
 
 def parse_args(argv):
-    """Return (inject, topics). Options come before the topics."""
-    inject = False
+    """Return the topics, or None for --help. Options come before the topics."""
     args = list(argv)
     while args and args[0].startswith("-"):
         opt = args.pop(0)
         if opt in ("-h", "--help"):
-            return None, None
-        if opt != "--inject":
-            raise UsageError(f"unknown option: {opt}")
-        inject = True
-    return inject, args
+            return None
+        raise UsageError(f"unknown option: {opt}")
+    return args
 
 
 def notes(vault):
@@ -139,24 +134,14 @@ def report(wanted, hits):
 
 def main(argv):
     try:
-        inject, wanted = parse_args(argv)
+        wanted = parse_args(argv)
     except UsageError as err:
         print(f"SYSTEM ERROR: topic.py: {err}. {USAGE}", file=sys.stderr)
         return 2
-    if inject is None:
+    if wanted is None:
         print(__doc__.strip())
         return 0
-    try:
-        vault = read_vault()
-    except VaultError as err:
-        if inject:
-            print(f"ERROR: {err}")
-            return 0
-        print(f"USER ERROR: {err}", file=sys.stderr)
-        return 3
-    except OSError as err:
-        print(f"SYSTEM ERROR: topic.py: cannot read the vault path: {err}", file=sys.stderr)
-        return 1
+    vault = require_vault()
     if not wanted:
         print("ERROR: no topic given")
         return 0

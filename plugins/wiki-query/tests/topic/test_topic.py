@@ -87,11 +87,10 @@ class TopicTest(unittest.TestCase):
     def test_no_topic(self):
         self.check(0, "ERROR: no topic given")
 
-    def test_no_topic_inject(self):
-        self.check(0, "ERROR: no topic given", "--inject")
-
-    def test_inject_found(self):
-        self.check(0, EXPECTED, "--inject", "EDI")
+    def test_no_rules_marker(self):
+        _, out, _ = self.run_script(TOPIC, "EDI")
+        self.assertNotIn("--- vault CLAUDE.md ---", out)
+        self.assertNotIn("Never write.", out)
 
     def test_help(self):
         code, out, _ = self.run_script(TOPIC, "--help")
@@ -119,6 +118,10 @@ class TopicTest(unittest.TestCase):
         err = self.check(2, "", "--rules", "EDI")
         self.assertTrue(err.startswith("SYSTEM ERROR: topic.py: unknown option: --rules"), err)
 
+    def test_inject_option_gone(self):
+        err = self.check(2, "", "--inject", "EDI")
+        self.assertTrue(err.startswith("SYSTEM ERROR: topic.py: unknown option: --inject"), err)
+
     # vault path variants
 
     def test_crlf_and_spaces(self):
@@ -132,36 +135,32 @@ class TopicTest(unittest.TestCase):
         self.set_conf(str(self.vault))
         self.check(0, "Nothing found.", "missing")
 
-    # user errors
+    # vault problems: "ERROR: <message>" on stdout, exit 0, from vault.require_vault()
+
+    def no_rules(self, folder):
+        """The ERROR line vault.py prints for a vault folder without CLAUDE.md."""
+        return (f"ERROR: The configured vault folder has no CLAUDE.md: {folder}. "
+                "Use /wiki-vault:overwrite <vault path> to fix the vault path.")
 
     def test_no_config(self):
         self.conf.unlink()
-        err = self.check(3, "", "EDI")
-        self.assertEqual(err, f"USER ERROR: {MISSING}\n")
+        err = self.check(0, f"ERROR: {MISSING}", "EDI")
+        self.assertEqual(err, "")
 
     def test_empty_config(self):
         self.set_conf("")
-        err = self.check(3, "", "EDI")
-        self.assertTrue(err.startswith("USER ERROR: Vault path is missing."), err)
+        self.check(0, f"ERROR: {MISSING}", "EDI")
 
     def test_no_folder(self):
-        self.set_conf(str(self.tmp / "nope"))
-        err = self.check(3, "", "EDI")
-        self.assertTrue(err.startswith("USER ERROR: The configured vault folder has no CLAUDE.md"), err)
+        nope = self.tmp / "nope"
+        self.set_conf(str(nope))
+        self.check(0, self.no_rules(nope), "EDI")
 
     def test_no_claude_md(self):
         bare = self.tmp / "bare"
         bare.mkdir()
         self.set_conf(str(bare))
-        err = self.check(3, "", "EDI")
-        self.assertTrue(err.startswith("USER ERROR: The configured vault folder has no CLAUDE.md"), err)
-        self.check(0, f"ERROR: The configured vault folder has no CLAUDE.md: {bare}. "
-                      "Use /wiki-vault:overwrite <vault path> to fix the vault path.",
-                   "--inject", "EDI")
-
-    def test_no_config_inject(self):
-        self.conf.unlink()
-        self.check(0, f"ERROR: {MISSING}", "--inject", "EDI")
+        self.check(0, self.no_rules(bare), "EDI")
 
     # system error
 

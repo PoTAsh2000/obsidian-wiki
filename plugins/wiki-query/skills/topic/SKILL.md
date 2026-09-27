@@ -13,15 +13,18 @@ Read-only. Lists matching notes in the vault and changes nothing. The scripts re
 
 ## 1. Read the vault CLAUDE.md
 
-The vault path and its `CLAUDE.md`, printed by the script (an `ERROR:` line when the vault is not set up). Its rules win over this skill on any difference, except that this skill never writes to the vault:
-
 !`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
+
+- Output starts with `ERROR:`: reply with the text after `ERROR: ` exactly and stop.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Do not read that file again. Its rules win over this skill on any difference, except that this skill never writes to the vault.
 
 ## 2. Lookup result
 
-!`python3 "${CLAUDE_SKILL_DIR}/scripts/topic.py" --inject $ARGUMENTS`
+!`python3 "${CLAUDE_SKILL_DIR}/scripts/topic.py" $ARGUMENTS`
 
 ## 3. Reply
+
+Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop. The one exception is `ERROR: no topic given`, below.
 
 - Result is `ERROR: no topic given`: ask the user for one or more topics, separated by spaces. Then run exactly `python3 "${CLAUDE_SKILL_DIR}/scripts/topic.py" <topic>...` and reply as below with its output.
 - Result is any other `ERROR: <text>`: reply with `<text>` exactly and stop. Do not retry.
@@ -29,6 +32,5 @@ The vault path and its `CLAUDE.md`, printed by the script (an `ERROR:` line when
 
 If a run of `topic.py` exits non-zero:
 
-- Exit 3 (stderr `USER ERROR: <text>`): reply with `<text>` exactly and stop. Do not retry.
 - Exit 2 (bad call): run `python3 "${CLAUDE_SKILL_DIR}/scripts/topic.py" --help`, fix the call once. If it still fails, show the stderr line and stop.
 - Exit 1 (system error): show the stderr line and stop.
