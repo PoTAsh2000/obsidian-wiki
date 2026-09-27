@@ -11,12 +11,16 @@ Saves one useful answer from this conversation as exactly one new `draft` note i
 
 ## 1. Read the vault CLAUDE.md
 
-Context gathered by `gather.py` (vault path, today, a free draft file path, existing topics, then the vault `CLAUDE.md`):
+!`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/vault.py"`
+
+- Output starts with `ERROR:`: reply with the text after `ERROR: ` exactly and stop. Never ask for the vault path and never write it; only `wiki-vault` does that.
+- Otherwise the `vault:` line is the vault, and the text after `--- vault CLAUDE.md ---` is the vault `CLAUDE.md`. Read it now and follow it. Do not read that file again. Its rules and frontmatter schema win over this skill on any difference, except that this skill only ever creates a `draft` note in `01. Inbox`.
+
+Context gathered by `gather.py` (today, a free draft file path, existing topics):
 
 !`python3 "${CLAUDE_SKILL_DIR}/scripts/gather.py"`
 
-- A line starting with `ERROR:` above: reply with the text after `ERROR: ` exactly and stop. Never ask for the vault path and never write it; only `wiki-vault` does that.
-- Otherwise read the vault `CLAUDE.md` above first. Its rules and frontmatter schema win over this skill on any difference, except that this skill only ever creates a `draft` note in `01. Inbox`.
+Any script that prints a line starting with `ERROR:` is handled the same way: reply with the text after `ERROR: ` and stop.
 
 ## 2. Pick the content
 
@@ -38,12 +42,13 @@ Use the Write tool on the `draft_file` path from step 1 (a temp file, not in the
 ## 5. Save
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/save.py" '<vault>' '<Title>' '<draft_file>'
+python3 "${CLAUDE_SKILL_DIR}/scripts/save.py" '<Title>' '<draft_file>'
 ```
 
 Keep the single quotes; write a `'` inside a value as `'\''`. Do not fix forbidden filename characters yourself, `save.py` does that.
 
-- Exit 0: go to step 6.
+- Exit 0 with a line starting with `ERROR:`: reply with the text after `ERROR: ` and stop.
+- Exit 0 otherwise: go to step 6.
 - Exit 3, `appendable: yes` (a draft of that name is in `01. Inbox`): offer two choices, append to it or save under another title (propose one). Only after the user picks append, run the same command with `--append` right after `save.py`. It adds the body under a `## <today>` heading and does not touch the existing frontmatter or text. Another title: rerun step 5 with it.
 - Exit 3, `appendable: no`: a note with that name exists elsewhere, with another status or more than once. Say which notes (`exists:`) and their `status:`, propose a different title and rerun step 5 with it once the user agrees. Any other exit 3: report the error to the user and stop.
 - Exit 2: fix the call or the draft file as the error says (for example remove a link to a note that does not exist), then rerun once. Check `--help` if unsure. Still failing: report the error and stop.

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """save.py: write a draft note into <vault>/01. Inbox, never overwriting anything.
 
-usage: save.py [--append] <vault> <title> <draft-file>
+usage: save.py [--append] <title> <draft-file>
 
 Create "<vault>/01. Inbox/<title>.md" from <draft-file>, or with --append add the
 draft body to an existing draft note of that name in 01. Inbox.
+The vault comes from the shared scripts/vault.py.
 The script adds the "# <title>" heading; the draft file holds frontmatter and body.
 Use it in wiki-save:save after the model wrote the draft file (path from gather.py).
 
 arguments:
-  <vault>       vault root, as printed by gather.py
-  <title>       note title; \\ / : * ? " < > | # ^ [ ] become "-"
+  <title>      note title; \\ / : * ? " < > | # ^ [ ] become "-"
   <draft-file>  frontmatter (with status: draft) plus body, no "# Title" needed.
                 --append uses only the body. Deleted after a successful save.
 
@@ -21,16 +21,17 @@ existing file or to the note itself.
 output (stdout): saved|appended: <path from vault root>, renamed: yes|no
 on exit 3: exists: <path> and status: <status|none> per match, then appendable: yes|no
 (yes only for a single match that is a draft directly in 01. Inbox)
+vault problem (exit 0): a single "ERROR: <message>" line, nothing saved
 
 exit codes:
-  0  saved or appended
-  1  system error (vault folder or 01. Inbox missing, write failed)
+  0  saved or appended, or an ERROR line
+  1  system error (01. Inbox missing, write failed)
   2  bad usage (arguments, draft file missing or invalid, link to a missing note)
   3  user error (a note with that name exists, --append target is not an Inbox draft)
 
 examples:
-  save.py "C:/Vault" "ACE vs SOP" /tmp/wiki-save-1.md
-  save.py --append "C:/Vault" "ACE vs SOP" /tmp/wiki-save-1.md
+  save.py "ACE vs SOP" /tmp/wiki-save-1.md
+  save.py --append "ACE vs SOP" /tmp/wiki-save-1.md
 """
 
 import os
@@ -39,9 +40,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
-# The shared vault reader lives in the plugin's scripts folder; only to_native is used.
+# The shared vault reader lives in the plugin's scripts folder.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import to_native  # noqa: E402
+from vault import require_vault, to_native  # noqa: E402
 
 INBOX = "01. Inbox"
 FENCE = re.compile(r"^---[ \t]*$")
@@ -229,13 +230,13 @@ def main(argv):
     mode = "create"
     if argv[:1] == ["--append"]:
         mode, argv = "append", argv[1:]
-    if len(argv) != 3:
-        print("usage: save.py [--append] <vault> <title> <draft-file> (see --help)",
+    if len(argv) != 2:
+        print("usage: save.py [--append] <title> <draft-file> (see --help)",
               file=sys.stderr)
         return 2
-    vault = Path(to_native(argv[0]))
+    vault = require_vault()
     try:
-        lines = save(mode, vault, argv[1], Path(to_native(argv[2])))
+        lines = save(mode, vault, argv[0], Path(to_native(argv[1])))
     except Fail as err:
         print(err, file=sys.stderr)
         return err.code

@@ -3,22 +3,19 @@
 
 usage: gather.py
 
-Print the context wiki-save:save needs, as key: value lines, then the vault CLAUDE.md.
-Read-only: changes nothing. Reads the vault path from ~/.claude/obsidian-wiki/vault-path
-through the shared scripts/vault.py.
+Print the context wiki-save:save needs, as key: value lines.
+Read-only: changes nothing. Gets the vault from the shared scripts/vault.py. The vault
+path and the vault CLAUDE.md come from the vault.py injection, not from here.
 Used through !` injection at the start of wiki-save:save; run by hand to debug.
 
 output:
-  vault: <vault root>
   today: <YYYY-MM-DD>
   draft_file: <free temp path for the note draft, not created>
   topics: <existing topics, comma separated>
-  --- vault CLAUDE.md ---
-  <content of <vault>/CLAUDE.md>
-  Soft fail (exit 0): a single "ERROR: <message>" line, relay it to the user and stop.
+  ERROR: <message>    vault problem or no 01. Inbox folder: relay it to the user and stop
 
 exit codes:
-  0  context printed, or soft fail (ERROR: line)
+  0  context printed, or an ERROR line
   1  system error (cannot read a file)
   2  bad usage (arguments given)
 
@@ -34,7 +31,7 @@ from pathlib import Path
 
 # The shared vault reader lives in the plugin's scripts folder.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import MARKER, VaultError, read_vault  # noqa: E402
+from vault import require_vault  # noqa: E402
 
 INBOX = "01. Inbox"
 TEMPLATES = "90. Templates"
@@ -88,34 +85,26 @@ def all_topics(vault):
 
 
 def main(argv):
-    sys.stdout.reconfigure(encoding="utf-8", newline="\n")  # topics and CLAUDE.md may hold non-ASCII text
+    sys.stdout.reconfigure(encoding="utf-8", newline="\n")  # topics may hold non-ASCII text
     if argv in (["-h"], ["--help"]):
         print(__doc__.strip())
         return 0
     if argv:
         print("usage: gather.py (no arguments, see --help)", file=sys.stderr)
         return 2
-    try:
-        vault = read_vault()
-    except VaultError as err:
-        print(f"ERROR: {err}")
-        return 0
+    vault = require_vault()
     if not (vault / INBOX).is_dir():
         print("ERROR: " + NO_INBOX.format(inbox=INBOX, vault=vault.as_posix()))
         return 0
     try:
-        rules = (vault / "CLAUDE.md").read_text(encoding="utf-8-sig")
         topics = all_topics(vault)
     except OSError as err:
         print(f"SYSTEM ERROR: gather.py: cannot read the vault {vault.as_posix()}: {err}",
               file=sys.stderr)
         return 1
-    print(f"vault: {vault.as_posix()}")
     print(f"today: {date.today().isoformat()}")
     print(f"draft_file: {draft_path()}")
     print(f"topics: {', '.join(topics)}")
-    print(MARKER)
-    print(rules.replace("\r\n", "\n").rstrip("\n"))
     return 0
 
 
