@@ -124,7 +124,7 @@ class Relinker:
 
 def read_text(path, rel):
     try:
-        return path.read_text(encoding="utf-8", errors="surrogateescape", newline="")
+        return path.open(encoding="utf-8", errors="surrogateescape", newline="").read()
     except OSError as err:
         raise sys_error(f"cannot rewrite {rel}: {err}")
 

@@ -64,7 +64,7 @@ def user_error(msg):
 def read_text(path):
     """Read a note as is: newline="" keeps CRLF, surrogateescape keeps odd bytes."""
     try:
-        return path.read_text(encoding="utf-8", errors="surrogateescape", newline="")
+        return path.open(encoding="utf-8", errors="surrogateescape", newline="").read()
     except OSError as err:
         raise sys_error(f"cannot read {path.name}: {err}")
 
