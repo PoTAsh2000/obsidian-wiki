@@ -64,8 +64,15 @@ class StatusTest(AddTestBase):
     def test_usage(self):
         self.check(self.run_script(STATUS, "extra"), 2, stderr="usage:")
 
-    def test_no_home(self):
-        self.check(self.run_script(STATUS, home=False), 1, stderr="SYSTEM ERROR:")
+    def test_no_home_falls_back_to_os_home(self):
+        # Read-only: the real config is only read, never written.
+        result = self.run_script(STATUS, home=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.startswith("configured: "))
+
+    def test_config_not_a_file(self):
+        self.config.mkdir(parents=True)
+        self.check(self.run_script(STATUS), 1, stderr="SYSTEM ERROR: status.py: cannot read")
 
 
 class AddTest(AddTestBase):
@@ -81,57 +88,79 @@ class AddTest(AddTestBase):
     def test_ok_with_spaces_and_backslashes(self):
         posix = self.vault.as_posix()
         result = self.run_script(ADD, posix.replace("/", "\\"))
-        self.check(result, 0, f"configured: {posix}\nfolder: found")
+        self.check(result, 0, f"path: {posix}")
         self.assertEqual(self.stored(), posix)
+
+    def test_trailing_slashes_removed(self):
+        posix = self.vault.as_posix()
+        self.check(self.run_script(ADD, posix + "//"), 0, f"path: {posix}")
+        self.assertEqual(self.stored(), posix)
+
+    def test_no_temp_file_left(self):
+        self.run_script(ADD, str(self.vault))
+        self.assertEqual([p.name for p in self.config.parent.iterdir()], ["vault-path"])
 
     def test_already_configured(self):
         posix = self.vault.as_posix()
         self.run_script(ADD, posix)
         other = str(self.tmp / "other")
-        self.check(self.run_script(ADD, other), 3,
-                   stderr=f"USER ERROR: add.py: already configured: {posix}")
+        self.check(self.run_script(ADD, "--force", other), 3,
+                   stderr=f"USER ERROR: already configured: {posix}")
         self.check(self.run_script(ADD, posix), 3, stderr="already configured")
         self.assertEqual(self.stored(), posix)
 
     def test_empty_file_counts_as_not_configured(self):
         self.make_config(b"")
         posix = self.vault.as_posix()
-        self.check(self.run_script(ADD, posix), 0, f"configured: {posix}\nfolder: found")
+        self.check(self.run_script(ADD, posix), 0, f"path: {posix}")
 
     def test_missing_folder(self):
         nope = (self.tmp / "nope").as_posix()
         self.check(self.run_script(ADD, nope), 3,
-                   stderr=f"USER ERROR: add.py: folder not found: {nope}")
+                   stderr=f"USER ERROR: folder not found: {nope}")
         self.assertFalse(self.config.exists())
-        self.check(self.run_script(ADD, "--allow-missing", nope), 0,
-                   f"configured: {nope}\nfolder: missing")
+        self.check(self.run_script(ADD, "--force", nope), 0, f"path: {nope}")
         self.assertEqual(self.stored(), nope)
 
-    def test_dashdash_ends_options(self):
-        self.check(self.run_script(ADD, "--allow-missing", "--", "-h"), 0,
-                   "configured: -h\nfolder: missing")
-        self.assertEqual(self.stored(), "-h")
+    def test_force_after_path(self):
+        nope = (self.tmp / "nope").as_posix()
+        self.check(self.run_script(ADD, nope, "--force"), 0, f"path: {nope}")
+        self.assertEqual(self.stored(), nope)
 
     def test_usage_errors_write_nothing(self):
         vault = str(self.vault)
         cases = [
-            ((), "expected one vault path"),
-            (("a", "b"), "expected one vault path"),
-            (("",), "empty vault path"),
-            ((vault + "\nx",), "newline"),
-            (("--force", vault), "unknown option"),
+            ((), "SYSTEM ERROR: usage: add.py [--force] <vault-path>"),
+            (("a", "b"), "SYSTEM ERROR: usage: add.py [--force] <vault-path>"),
+            (("--allow-missing", vault), "SYSTEM ERROR: add.py: unknown option '--allow-missing', see --help"),
+            (("--", vault), "unknown option '--'"),
+            (("-x", vault), "unknown option '-x'"),
         ]
         for args, message in cases:
             with self.subTest(args=args):
                 self.check(self.run_script(ADD, *args), 2, stderr=message)
         self.assertFalse((self.home / ".claude").exists())
 
-    def test_no_home(self):
-        self.check(self.run_script(ADD, str(self.vault), home=False), 1, stderr="SYSTEM ERROR:")
+    def test_bad_paths_write_nothing(self):
+        vault = str(self.vault)
+        cases = [
+            ("", "USER ERROR: vault path is empty"),
+            (vault + "\nx","USER ERROR: vault path contains a line break"),
+            ("relative/vault", "USER ERROR: vault path is not absolute: relative/vault"),
+        ]
+        for arg, message in cases:
+            with self.subTest(arg=arg):
+                self.check(self.run_script(ADD, "--force", arg), 3, stderr=message)
+        self.assertFalse((self.home / ".claude").exists())
+
+    def test_no_home_needs_no_check(self):
+        # Without HOME there is no own check any more: a usage error still comes first.
+        self.check(self.run_script(ADD, home=False), 2, stderr="SYSTEM ERROR: usage:")
 
     def test_config_not_a_file(self):
         self.config.mkdir(parents=True)
-        self.check(self.run_script(ADD, str(self.vault)), 1, stderr="SYSTEM ERROR:")
+        self.check(self.run_script(ADD, str(self.vault)), 1,
+                   stderr="SYSTEM ERROR: add.py: cannot read")
 
 
 if __name__ == "__main__":

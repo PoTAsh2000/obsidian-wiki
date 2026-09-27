@@ -24,15 +24,16 @@ Use `$ARGUMENTS` as the path. Empty: ask the user once for the absolute path to 
 
 ## 3. Save
 
-Run exactly this, with the path as one quoted argument (the script turns every `\` into `/`):
+Run exactly this, with the path as one quoted argument (the script turns every `\` into `/` and removes trailing slashes):
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/add.py" -- "<path>"
+python3 "${CLAUDE_SKILL_DIR}/scripts/add.py" "<path>"
 ```
 
-- Exit 0: reply `Vault configured: <path>` with the path from the `configured:` line.
-- Exit 3, `folder not found: <path>`: ask the user whether to configure it anyway. Yes: run the same command with `--allow-missing` before `--`, then reply as for exit 0. No: reply `Run /wiki-vault:add later when you are ready to configure the vault.` and stop.
-- Exit 3, `already configured: <path>`: reply `Vault is already configured: <path>. Use /wiki-vault:overwrite to change it.` and stop.
+- Exit 0: reply `Vault configured: <path>` with the path from the `path:` line.
+- Exit 3, `USER ERROR: folder not found: <path>`: ask the user whether to configure it anyway. Yes: run the same command with `--force` before the path, then reply as for exit 0. No: reply `Run /wiki-vault:add later when you are ready to configure the vault.` and stop.
+- Exit 3, `USER ERROR: already configured: <path>`: reply `Vault is already configured: <path>. Use /wiki-vault:overwrite to change it.` and stop.
+- Exit 3, any other `USER ERROR:` (empty path, not absolute, line break): reply with the text after `USER ERROR: ` and stop.
 - Exit 2: fix the call once (see `add.py --help`) and run it again. Still failing: report the error and stop.
 - Exit 1: report the `SYSTEM ERROR:` line to the user and stop.
 
