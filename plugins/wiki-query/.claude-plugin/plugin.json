@@ -1,6 +1,6 @@
 {
   "name": "wiki-query",
-  "description": "Answer questions from my Obsidian vault with [[Note]] citations, plus fast read-only lookups by name, tag, topic and status",
+  "description": "Answer questions from my Obsidian vault with [[Note]] citations, plus read-only lookups by name, tag, topic and status",
   "author": {
     "name": "Thomas Arensman"
   }
