@@ -135,12 +135,23 @@ User errors (exit 3) go to stdout as `reply:` or `ask:` lines; system and usage 
 ### delete.py (delete)
 
 * Check the arguments
-  * Any argument: stop with a usage error
+  * `--dry-run` alone: run every check below, print `Would remove vault path: <path>` (or `No vault path configured.`) and keep every file
+  * Any other argument: stop with a usage error
 * Find the vault path file through `vault.py`
-  * File missing: print `removed: none` and stop
-* Read the stored path and remove the file
+  * The file or its `obsidian-wiki` folder is a symlink, junction or other reparse point: stop with a system error and remove nothing
+  * File missing: print `No vault path configured.`
+* Claim the file by renaming it to a unique `vault-path.del.*` name, read the stored path from the claim, then remove the claim
+  * A path written by add or overwrite in the meantime stays, and the output names only what was removed
+  * On Windows, a rename or removal blocked by another process holding the file open is retried for about half a second
   * Not a regular file, or it cannot be read or removed: stop with a system error
-* Print `removed: <path>`, or `removed: none` when the file was empty
+* Print `Vault path removed: <path>` and `To restore it, run /wiki-vault:add <path>`, or `No vault path configured.` when the file was empty
+  * Control characters in the path show as `\xNN` and a path over 300 characters is cut with `...`
+* Remove leftover `vault-path.tmp.<digits>` plain files from an interrupted add or overwrite, and `vault-path.del.*` claims from an interrupted delete, when older than a minute
+  * Nothing else in the folder is touched; a file that cannot be removed is skipped
+  * Print `Cleaned up <n> leftover temp file(s).` as a second line, only when there were any
+* Remove the `obsidian-wiki` folder when it is now empty (not with `--dry-run`); a folder that still holds anything stays
+
+The output is the reply Claude gives the user word for word.
 
 ## Tests
 
