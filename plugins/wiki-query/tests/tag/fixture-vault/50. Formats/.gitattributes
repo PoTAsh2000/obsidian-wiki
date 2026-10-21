@@ -1,0 +1,2 @@
+# Keep the CRLF, CR and BOM fixture bytes as written.
+*.md -text

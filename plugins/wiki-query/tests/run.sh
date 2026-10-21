@@ -9,10 +9,11 @@ fail=0
 # check <case> <expected exit> <args...>: compare stdout with expected/<case>.txt
 check() {
   local case=$1 want=$2; shift 2
-  local out got
+  local out got exp="$here/expected/$case.txt"
+  # find.sh tag output has no status column, so its tag cases have their own expected files
   out=$(bash "$find" --vault "$vault" "$@"); got=$?
   [ "$got" = "$want" ] || { echo "FAIL $case: exit $got, want $want"; fail=1; }
-  [ "$out" = "$(cat "$here/expected/$case.txt")" ] || { echo "FAIL $case: output differs"; diff <(echo "$out") "$here/expected/$case.txt"; fail=1; }
+  [ "$out" = "$(cat "$exp")" ] || { echo "FAIL $case: output differs"; diff <(echo "$out") "$exp"; fail=1; }
 }
 
 # code <case> <expected exit> <command...>: only check the exit code
