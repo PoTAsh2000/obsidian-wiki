@@ -32,16 +32,15 @@ Invoke the skill `wiki-lint:lint` by name with no arguments (never a lint script
 
 ## 3. Select the notes
 
-Run, with `all`, the note name from the arguments, or nothing when there is no argument:
+Run, with the note name from the arguments, or `all` when there is no argument:
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/select.py" ["all" | "<note name>"]
+python3 "${CLAUDE_SKILL_DIR}/scripts/select.py" "<all or note name>"
 ```
 
 It prints `candidate:` lines (drafts in `01. Inbox`; `same name:` lists filename clashes) with, per candidate, `frontmatter:` (missing or empty schema keys, with suggested `created:` and `source:` values), `mention:` (another note named in the draft but not linked), `mentioned-in:` (a note naming the draft without a link) and `overlap:` (a note sharing many words; `draft` is another draft of this run, `duplicate` the same text). Then `candidates: <n>` and the index of other notes: `folder:` lines, each followed by `note:` lines (filename, `status`, `aliases`, `title`). An `index:` line means the index is cut off: search the vault for other link targets. The last line `run: <id>`: pass `--run <id>` to every script in steps 4 to 8.
 
-- **No argument:** list every candidate path in backticks, one per line, and ask which one to process.
-- **`all`:** every candidate printed (at most the 10 oldest; `selected: <k>` means the rest wait for another run).
+- **No argument or `all`:** every candidate printed (at most the 10 oldest; `selected: <k>` means the rest wait for another run).
 - **A note name:** the one candidate. Exit 3 (not a draft in `01. Inbox`, or missing): tell the user the error text and stop.
 - `candidates: 0`: say there are no drafts in the Inbox and go to step 8.
 

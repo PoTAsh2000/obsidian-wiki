@@ -6,11 +6,11 @@ Installing wiki-ingest also installs `wiki-lint`, which it runs before and after
 
 ## Skills
 
-### `/wiki-ingest:ingest [all | note name]`
+### `/wiki-ingest:ingest [all | note name]` (default `all`)
 
 Processes `draft` notes in `01. Inbox`. It first lints the whole vault, then shows one plan table with a row per change. You approve it, or approve with changes per row id ("id 3 skip"). Then it edits, moves or merges each note, lints the changed notes and ends with the notes that moved from `draft` to `review`. It never deletes a note. Normal language works too: "process my inbox".
 
-- `/wiki-ingest:ingest` (lists the drafts and asks which one)
+- `/wiki-ingest:ingest` (same as `all`)
 - `/wiki-ingest:ingest all` (the 10 oldest drafts per run)
 - `/wiki-ingest:ingest Tokens`
 
