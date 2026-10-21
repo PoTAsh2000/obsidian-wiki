@@ -1,0 +1,5 @@
+proj:
+- 60. Nested/EDI Mapping.md (review, tag proj/edi, proj/edi/mapping)
+- 60. Nested/Proj.md (no status)
+proj/edi:
+- 60. Nested/EDI Mapping.md (review)

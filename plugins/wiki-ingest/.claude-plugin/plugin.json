@@ -1,6 +1,6 @@
 {
   "name": "wiki-ingest",
-  "description": "Moves draft notes out of the Obsidian Inbox after an approved plan (draft to review), and marks reviewed notes evergreen",
+  "description": "Plans and applies moving draft notes out of the Obsidian Inbox (draft to review); apply marks reviewed notes evergreen",
   "author": {
     "name": "Thomas Arensman"
   },
