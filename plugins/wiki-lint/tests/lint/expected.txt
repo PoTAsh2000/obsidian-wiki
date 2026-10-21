@@ -1,0 +1,90 @@
+lint: 44 notes, 104 links scanned (dry run, nothing changed)
+
+changed (20):
+30. Knowledge/Stray Draft.md -> 01. Inbox/Stray Draft.md  movedToInbox
+90. Templates/Draft Template.md -> 01. Inbox/Draft Template.md  movedToInbox
+01. Inbox/Stray Draft.md:8  removedDeadLinks  [[Gone]]
+10. Daily/2026-09-20.md:3  removedDeadLinks  [[Daily Missing]]
+30. Knowledge/CRLF Note.md:8  removedDeadLinks  [[CRLF Missing]]
+30. Knowledge/Dead Links.md:5  removedDeadLinks  [[Missing Related]]
+30. Knowledge/Dead Links.md:9  removedDeadLinks  [[Missing]]
+30. Knowledge/Dead Links.md:10  removedDeadLinks  [[Missing|shown text]]
+30. Knowledge/Dead Links.md:11  removedDeadLinks  [[Missing#Part]]
+30. Knowledge/Dead Links.md:11  removedDeadLinks  [[Missing#^x]]
+30. Knowledge/Dead Links.md:12  removedDeadLinks  [text](missing.md)
+30. Knowledge/Dead Links.md:12  removedDeadLinks  [spaced](<Missing Page.md>)
+30. Knowledge/Dead Links.md:12  removedDeadLinks  [encoded](Missing%20Page.md)
+30. Knowledge/Dead Links.md:13  removedDeadLinks  ![[Missing Embed]]
+30. Knowledge/Dead Links.md:14  removedDeadLinks  [[Missing]]
+30. Knowledge/Dead Links.md:18  removedDeadLinks  [[Missing Table\|table text]]
+30. Knowledge/No Trailing Newline.md:8  removedDeadLinks  [[Final Missing|final]]
+30. Knowledge/Typo Links.md:10  removedDeadLinks  [[Sample Note]]
+90. Templates/Knowledge Template.md:9  removedDeadLinks  [[Template Missing]]
+99. Archived/Old Note.md:8  removedDeadLinks  [[Archived Missing]]
+
+broken-or-risky (22):
+30. Knowledge/Ambiguous.md:8  ambiguous-link  [[Same Name]] matches 30. Knowledge/Same Name.md, 40. Projects/Same Name.md; unique: [[30. Knowledge/Same Name]], [[40. Projects/Same Name]]
+30. Knowledge/Ambiguous.md:8  ambiguous-link  [[Shared Alias]] matches 30. Knowledge/Shared Alias One.md, 30. Knowledge/Shared Alias Two.md; unique: [[Shared Alias One]], [[Shared Alias Two]]
+30. Knowledge/Typo Links.md:10  likely-typo  [[Contex Engineering]] did you mean [[Context Engineering]]
+30. Knowledge/Dead Links.md:13  missing-attachment  ![[missing.png]] file missing.png not found
+30. Knowledge/Dead Links.md:13  missing-attachment  ![](nothing.png) file nothing.png not found
+30. Knowledge/Dead Links.md:13  missing-attachment  ![alt](Attachments/missing.png) file missing.png not found
+30. Knowledge/Latin1 Note.md:8  invalid-encoding  bytes that are not UTF-8 (cp1252 or Latin-1?)
+01. Inbox/Taken.md:1  duplicate-name  same name as 30. Knowledge/Taken.md
+30. Knowledge/Same Name.md:1  duplicate-name  same name as 40. Projects/Same Name.md
+30. Knowledge/Shared Alias One.md:4  duplicate-name  alias 'Shared Alias' is also an alias of 30. Knowledge/Shared Alias Two.md
+30. Knowledge/Shared Alias Two.md:3  duplicate-name  alias 'Acme' equals the name of 20. Customers/Acme.md
+30. Knowledge/Shared Alias Two.md:3  duplicate-name  alias 'Shared Alias' is also an alias of 30. Knowledge/Shared Alias One.md
+30. Knowledge/Taken.md:1  duplicate-name  same name as 01. Inbox/Taken.md
+40. Projects/Same Name.md:1  duplicate-name  same name as 30. Knowledge/Same Name.md
+30. Knowledge/Archived Here.md:3  status-location  status archived outside 99. Archived
+30. Knowledge/Taken.md:3  status-location  draft outside 01. Inbox, not moved: 01. Inbox/Taken.md already exists
+30. Knowledge/Fragments.md:11  broken-fragment  [[#Nowhere]] heading not found
+30. Knowledge/Fragments.md:11  broken-fragment  [[Target Note#Renamed]] heading not found
+30. Knowledge/Fragments.md:11  broken-fragment  [[Target Note#^nope]] block not found
+30. Knowledge/Fragments.md:11  broken-fragment  [t](Target%20Note.md#Gone) heading not found
+30. Knowledge/Fragments.md:12  broken-fragment  ![[image.png#x]] fragment on non-note target
+30. Knowledge/Fragments.md:17  broken-fragment  [[#Code Heading]] heading not found
+
+rule-violations (21):
+01. Inbox/No Frontmatter.md:1  frontmatter-missing  no frontmatter
+30. Knowledge/Missing Fields.md:1  frontmatter-missing  no created
+30. Knowledge/Missing Fields.md:1  frontmatter-missing  no status
+30. Knowledge/BOM Note.md:1  frontmatter-invalid  starts with a byte order mark
+30. Knowledge/BOM Note.md:4  frontmatter-invalid  created '2026/09/01' is not YYYY-MM-DD
+30. Knowledge/Bad Date.md:4  frontmatter-invalid  created '2026-02-30' is not a real date
+30. Knowledge/Bad Frontmatter.md:2  frontmatter-invalid  type 'foo' is not in the vault CLAUDE.md list
+30. Knowledge/Bad Frontmatter.md:3  frontmatter-invalid  status 'wip' is not in the vault CLAUDE.md list
+30. Knowledge/Bad Frontmatter.md:4  frontmatter-invalid  created '2026/09/24' is not YYYY-MM-DD
+30. Knowledge/Bad Frontmatter.md:6  frontmatter-invalid  tag 'AI' is not lowercase kebab-case
+30. Knowledge/Bad Frontmatter.md:8  frontmatter-invalid  tag 'bad_tag' is not lowercase kebab-case
+30. Knowledge/Duplicate Key.md:7  frontmatter-invalid  duplicate key status at lines 3 and 7
+30. Knowledge/Unclosed Frontmatter.md:1  frontmatter-invalid  frontmatter not closed
+30. Knowledge/Only Frontmatter.md:1  empty-note  no body text
+30. Knowledge/Only Title.md:1  empty-note  no body text
+30. Knowledge/Empty Sections.md:8  empty-section  ## Empty
+30. Knowledge/Empty Sections.md:10  empty-section  ## Comment Only
+30. Knowledge/Empty Sections.md:14  empty-section  ## Multi Comment
+30. Knowledge/Empty Sections.md:24  empty-section  ### Child Without Text
+30. Knowledge/Empty Sections.md:26  empty-section  ## Last
+30. Knowledge/Only Title.md:6  empty-section  # Only Title
+
+housekeeping (10):
+01. Inbox/Old Idea.md:4  inbox-age  created 2020-01-01, older than 7 days
+30. Knowledge/Archived Links.md:8  archived-link  [[99. Archived/Old Note#Old Note|the old one]] points to 99. Archived/Old Note.md; use [[Target Note]]
+30. Knowledge/Archived Links.md:8  archived-link  [[Old Note]] points to 99. Archived/Old Note.md; use [[Target Note]]
+Attachments/unused.png:1  unused-attachment  4 bytes, no note, canvas or base links to it
+01. Inbox/Draft Template.md  orphans
+30. Knowledge/Archived Links.md  orphans
+30. Knowledge/Bad Date.md  orphans
+30. Knowledge/Forward Links.md  orphans
+30. Knowledge/Latin1 Note.md  orphans
+30. Knowledge/Orphan.md  orphans
+
+info (6):
+90. Templates/Knowledge Template.md:5  placeholderLinks  [[{{title}}]]
+90. Templates/Knowledge Template.md:9  placeholderLinks  [[{{title}}]]
+30. Knowledge/Forward Links.md:8  allowlistedLinks  [[Planned Topic]]
+30. Knowledge/Forward Links.md:8  allowlistedLinks  [[future plan|later]]
+30. Knowledge/Forward Links.md:8  allowlistedLinks  [f](Future%20Work.md)
+30. Knowledge/Forward Links.md:8  allowlistedLinks  ![[Future Map.md]]
