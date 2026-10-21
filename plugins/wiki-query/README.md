@@ -6,7 +6,7 @@ Finds what you already know before you research or write it again. Ask a questio
 
 ### `/wiki-query:query <question>`
 
-Answers a question from your notes only. Claude searches with the key terms and synonyms, reads the best matches, and cites every claim with the note it came from. It marks `draft` and `review` notes as not yet approved, and says so when your notes do not cover the question. Use it when you want to know what your notes say, not for general questions.
+Answers a question from your notes only. Claude searches with the key terms and synonyms, answers from the matching lines the search prints, opens only the matching section of a note when those lines are not enough, and cites every claim with the note it came from. It marks `draft` and `review` notes as not yet approved, and says so when your notes do not cover the question. Use it when you want to know what your notes say, not for general questions.
 
 - `/wiki-query:query how do seals stay warm?`
 - "what do my notes say about context engineering?"
@@ -29,16 +29,19 @@ Lists notes per frontmatter tag, one block per tag, with each note's status. A l
 
 ### `/wiki-query:topic <topic>...`
 
-Lists notes per frontmatter `topic`, one block per topic. The topic must match the whole value, case-insensitive.
+Lists notes per frontmatter `topic`, one block per topic, with each note's `status` after it, for example `(draft)`. The topic must match the whole value, case-insensitive (`Straße` matches `STRASSE`, and accents match however they are encoded).
 
 - `/wiki-query:topic seals`
 - `/wiki-query:topic ai tooling`
+- `/wiki-query:topic Supply Chain, EDI` (a comma lets a topic hold spaces)
 
-### `/wiki-query:status <status>...`
+### `/wiki-query:status [--all] [<status>...]`
 
-Lists notes per frontmatter status (`draft`, `review`, `evergreen`, `archived`), one block per status. Use it to see what is waiting for ingest or review. It never changes a status.
+Lists notes per frontmatter status (`draft`, `review`, `evergreen`, `archived`), one block per status, oldest first with their `updated` (else `created`) date. Use it to see what is waiting for ingest or review. Without a status it shows how many notes have each status, and how many have none. A misspelled status gets a "did you mean" hint. A block shows at most the 50 oldest notes and ends with `- ... and <n> more`; `--all` shows every note. It never changes a status.
 
+- `/wiki-query:status`
 - `/wiki-query:status review draft`
+- `/wiki-query:status --all evergreen`
 
 ## Vault
 
@@ -67,15 +70,35 @@ An `ERROR:` line always ends with exit 0, also in the scripts that import vault.
 
 Ranks notes for the question, so Claude reads the best ones first.
 
-* Check the arguments: optional `--limit` (1 to 200, default 20), one or more terms
+* Check the arguments: optional `--limit` (1 to 200, default 20), `--excerpts` and `--links` (1 to 20), 1 to 20 terms of up to 200 characters
   * Missing or invalid argument: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-* Read every note, skipping dot folders, `Attachments`, `90. Templates` and the vault `CLAUDE.md`
+* Read every note, skipping dot folders, `Attachments`, `90. Templates`, the vault `CLAUDE.md` and notes that resolve outside the vault (symlinks, junctions)
   * A note cannot be read: stop with a system error
-* Score each term, case-insensitive: filename and title count most, then aliases, then tags and topic, then body lines
-* Print the notes with a hit, best first, with score, status and where each term hit
+* Score each term, case-insensitive (Unicode normalized, so `cafe` with a decomposed accent from macOS matches `café`, and `strasse` matches `straße`): filename and title count most, then aliases, then tags and topic, then body lines
+  * A whole word (plural included) scores full points, a match inside a word (`edi` in `credit`) a fifth
+  * Body hits are weighted by how rare the term is across the notes (BM25 style, counted per run, nothing cached), so a rare term outweighs a common one
+  * Each extra term that hits as a whole word in the same section as another adds 2 points (best section only, at most 6, so it never beats a filename or title hit)
+* Print the notes with a hit, best first, with score, status, where each term hit and the shortest wikilink that is unique in the vault
+  * Frontmatter `created`, `updated` (or `modified`) and `source` (or `url`) when set, so Claude can date and source evidence without opening the note
+  * Equal score: notes in `99. Archived` come last and are marked `archived: yes`
   * Nothing matches: print `matches: 0`
+* `--excerpts <n>`: under each note, the n best matching lines outside code fences (most rare terms as whole words, one per section first, printed in line order), with line number, nearest heading and the line range of that section (up to the next heading of the same or higher level), cut to 160 characters
+* No note has a whole-word hit (or nothing matches): print a `suggest:` line per term with up to 10 close words from note names, titles, aliases, tags and topics
+* `--links <n>`: for the top n notes, their `[[links]]` and `related` entries resolved like Obsidian (path and status, or `unresolved`), and the notes that link to them
+
+### cite.py (query)
+
+Checks the wikilinks of an answer before Claude replies.
+
+* Check the arguments: one or more `[[Note]]`, `[[Note#Heading]]` or bare targets
+  * None given: stop with a usage error
+* Get the vault from `vault.py`
+  * Vault problem: print the `ERROR:` line and stop
+* Resolve each link like `search.py` and check its heading or `^block`
+  * All ok: print nothing, exit 0
+  * Otherwise one line per bad link (`unresolved`, `ambiguous`, `heading`) with the closest fix when there is one, exit 1
 
 ### name.py (name)
 
@@ -114,29 +137,45 @@ Ranks notes for the question, so Claude reads the best ones first.
 
 ### topic.py (topic)
 
+* Take the topics from the arguments, or without arguments from stdin, one argument per line: the skill sends the topics on stdin through a quoted heredoc, so the shell never parses them, apostrophes included
+* Split an argument with a comma on commas and trim each part, any other argument on whitespace
 * Check the options
   * Unknown option: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-  * No topics: print `ERROR: no topic given`, so Claude asks for them
-* Read the `topic` of every note, skipping dot folders, `Attachments` and `90. Templates`
-  * A note cannot be read: stop with a system error
-* Print one block per topic with the matching notes
+  * No topics: print `ERROR: no topic given` and a `known topics:` line with every topic in the vault and its note count, so Claude asks which ones
+* Read the `topic` and `status` of every note, skipping dot folders, `Attachments`, `90. Templates`, the vault `CLAUDE.md` and folder links (symlinks, junctions)
+  * Frontmatter without a closing `---` or `...`: no topics
+  * A leading BOM is ignored, quoted values are unquoted with their YAML escapes (`''`, `\"`, `\\`), and a comma inside a quoted inline list item does not split it
+  * An unquoted ` #` comment is dropped from topic and status values (`C#` stays), and a topic written as a link (`[[EDI]]`, `[[30. Knowledge/EDI|EDI]]`) counts as its alias, or else the note name
+  * Topics match after NFC normalization and case folding
+  * A note or subfolder cannot be read: skip it and name it in a last `skipped:` line
+  * The vault folder cannot be read: stop with a system error
+* Print one block per topic with the matching notes, sorted case-insensitively, each with its status in parentheses when it has one
   * Topic without notes: `- nothing found`
   * No topic has notes: `Nothing found.`
+  * A topic without notes: a last `did you mean:` line with up to three known topics that contain it, are contained in it or are spelled close to it, so a typo needs no second call
 
 ### status.py (status)
 
-* Check the arguments
+* Read the arguments from stdin (`-`, the form the skill uses, so user text never passes through shell quoting) or the command line
+* Check the arguments: optional `--all`, zero or more statuses
   * Unknown option: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-  * No status given, or a status with other characters than letters, digits, `_` or `-`: print an `ERROR:` line, so Claude asks again
-* Read the `status` of every note, skipping dot folders, `Attachments` and `90. Templates`
+  * A status with other characters than letters, digits, `_` or `-`: print an `ERROR:` line with the accepted form; Claude relays it and the user runs the skill again
+* Read the `status`, `updated` and `created` of every note (keys in any case, the first spelling wins), skipping dot folders, `Attachments`, `90. Templates` (any case on Windows) and the vault `CLAUDE.md`
+  * Symlinks and junctions are never followed, so only real files inside the vault count
+  * Frontmatter needs a closing `---` or `...` line; a leading BOM is ignored
   * A note cannot be read: stop with a system error
-* Print `found: yes` or `found: no`, then one block per status with the matching notes
+* No status given: print `found: yes` and one `<status>: <count>` line per status in the vault, in lifecycle order (`draft`, `review`, `evergreen`, `archived`), then others alphabetically, then `(no status): <count>` for notes without a usable status (left out when 0)
+* Otherwise print `found: yes` or `found: no`, then one block per status with the matching notes, oldest first, each with its `updated` (else `created`) date
+  * Only an ISO date (`YYYY-MM-DD`, a time after it is cut off) counts; a bad `updated` falls back to `created`
+  * No date or a non-ISO date: sorted last, a non-ISO one shown as `(bad date: <value>)`
+  * More than 50 notes: the 50 oldest, then `- ... and <n> more` (`--all` shows every note)
   * Status without notes: `- nothing found`
   * No status has notes: `Nothing found.`
+  * Unknown status close to one in the vault: a `did you mean: <status>` line
 
 ## Tests
 
