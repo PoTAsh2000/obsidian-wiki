@@ -32,8 +32,11 @@ from pathlib import Path
 
 # vault.py lives in the plugin's scripts folder and knows how to read the file.
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from vault import config_file, home_dir, stored_path, to_native  # noqa: E402
+from vault import config_file, home_dir, stored_path  # noqa: E402
 from add import Fail, canonical, norm  # noqa: E402
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "current" / "scripts"))
+from current import problem  # noqa: E402
 
 
 def obsidian_json(home):
@@ -85,12 +88,8 @@ def candidates():
 
 def state(path):
     """The reply for a stored path: healthy, folder gone, or no CLAUDE.md."""
-    folder = Path(to_native(path))
-    if not folder.is_dir():
-        why = "that folder no longer exists"
-    elif not (folder / "CLAUDE.md").is_file():
-        why = "that folder has no CLAUDE.md"
-    else:
+    why = problem(path)
+    if not why:
         return f"Vault is already configured: {path}. Use /wiki-vault:overwrite to change it."
     return (f"Vault is configured as {path}, but {why}. "
             "Use /wiki-vault:overwrite to point to the new location.")

@@ -18,6 +18,12 @@ Replaces the stored vault path, for example after you moved or renamed the vault
 
 - `/wiki-vault:overwrite D:/Notes/Vault`
 
+### `/wiki-vault:current`
+
+Shows the stored vault path, or why it cannot be used: nothing stored, the folder is gone or is not a folder, or it has no `CLAUDE.md`. A usable vault also gets a warning when it has no `.obsidian` folder or is not writable. Changes nothing.
+
+- `/wiki-vault:current`
+
 ### `/wiki-vault:delete`
 
 Removes the stored vault path. Use it when you stop using the plugins or want to start over with `/wiki-vault:add`. The vault stays as it is.
@@ -131,6 +137,21 @@ User errors (exit 3) go to stdout as `reply:` or `ask:` lines; system and usage 
 * Folder exists without `.obsidian` and no such parent: add a warning to the reply, the path stays saved
   * Exactly one direct child folder has a `CLAUDE.md` or `.obsidian` folder: name that child as the vault instead of the warning
 * Print `path: <saved path>`, `old: <old path>` (or `none`) and `reply: <reply>`
+
+### current.py (current)
+
+Read-only. The reply for the user is its output.
+
+* Check the arguments
+  * Any argument: stop with a usage error
+* Read the stored vault path through `vault.py`
+  * File cannot be read: stop with a system error
+* No path stored: print `Vault is not configured. Use /wiki-vault:add <vault path> to configure your vault.`
+* Path stored but the folder is gone (or is a file): print `Vault is configured as <path>, but that folder no longer exists. Use /wiki-vault:overwrite to point to the new location.`
+  * No `CLAUDE.md` in it: the same reply with `that folder has no CLAUDE.md`
+* Otherwise print `Vault configured: <path>`, then a `Warning:` line for no `.obsidian` folder and one for a folder that is not writable
+
+`status.py` (add) takes the same folder check from `current.py`, so both give the same reasons.
 
 ### delete.py (delete)
 
