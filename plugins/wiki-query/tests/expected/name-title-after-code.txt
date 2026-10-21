@@ -1,1 +1,1 @@
-- 01. Inbox/Idea.md
+- [[Idea]] 01. Inbox/Idea.md (title: Loose Idea)

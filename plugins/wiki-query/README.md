@@ -13,7 +13,7 @@ Answers a question from your notes only. Claude searches with the key terms and 
 
 ### `/wiki-query:name <text>`
 
-Lists notes whose filename or first `# ` title contains the text, case-insensitive. When nothing matches, it falls back to aliases. Use it when you know roughly what a note is called.
+Lists notes whose filename or title (frontmatter `title` or first `# ` heading) contains the text, and says on each line which one matched. When nothing matches, it falls back to the frontmatter `alias` or `aliases`. Case, accents, Unicode form (a name saved decomposed by macOS or iCloud), extra spaces, apostrophes and punctuation such as `-`, `_`, `.`, `:` or `(` do not matter (`+` and `#` do, so C++ and C# differ). Titles match as plain text, without bold, links or code marks. You can also paste a `[[wikilink]]`, a path or a file name such as `Projects/RBH.md`: only the note name is searched. Best matches come first (exact name, then starts with, then contains), at most 20; when not even an alias matches, notes whose filename or title holds every word in any order are listed. Each line has the `[[wikilink]]` to cite and the note status. Use it when you know roughly what a note is called.
 
 - `/wiki-query:name dolphin`
 - `/wiki-query:name context engineering`
@@ -102,15 +102,26 @@ Checks the wikilinks of an answer before Claude replies.
 
 ### name.py (name)
 
-* Check the search text
-  * No text or only spaces: stop with a usage error
+* Check the arguments: optional `--limit` (1 to 200, default 20), then the search text
+  * No text, only spaces or an invalid `--limit`: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-* Read every note, skipping dot folders, `Attachments` and `90. Templates`
+* Read the head of every note (frontmatter up to the first `# ` heading, at most 64 KiB), skipping dot folders, `Attachments`, `90. Templates` and the Excluded files set in Obsidian (`userIgnoreFilters` in `.obsidian/app.json`: path prefixes, `/regex/` on the path; a missing or invalid file skips only the fixed folders)
+  * Skipped notes still count for shared names
+  * Linked folders (symlinks, Windows junctions) are not entered, linked files outside the vault are skipped
   * A note cannot be read: stop with a system error
-* Print the notes whose filename or title contains the text
-  * No match: print the notes with a matching alias instead
-  * Still no match: print `Nothing found.`
+* A text in `[[ ]]` or ending in `.md`, `.canvas` or `.base` is reduced to the note name: no folder, extension, `|display` or `#heading`
+* Compare after Unicode NFC, casefold, dropping accents and apostrophes and treating other ASCII punctuation (except `+` and `#`) and runs of whitespace as one space; paths print as on disk
+  * A text of only punctuation: print `Nothing found.`
+* Titles are compared and printed as plain text: `[[a|b]]` gives `b`, `[t](url)` gives `t`, emphasis and code marks and the closing `#`'s of a heading are dropped
+* Print the notes whose filename, frontmatter `title` or first `# ` heading contains the text, each with its wikilink, `(filename)` or `(title: <title>)` and the status
+  * Order: exact name, then starts with, then contains, then path
+  * Two notes (or a note and a `.canvas` or `.base` file) with the same filename: link by path, as `[[folder/Name]]`, and mark `shared name`
+  * Control and bidi characters are removed and titles and aliases are cut at 120 characters, so a note cannot add fake lines
+  * More than `--limit` matches: end with `<n> more not shown`
+  * No match: print the notes with a matching `alias` or `aliases` (key in any case, duplicates dropped) instead, linked as `[[Name|alias]]` with `|`, `[` and `]` removed from the alias
+  * Still no match and several words: print the notes whose filename or title holds every word, in any order
+  * Still no match: print `Nothing found.`, followed by `Close names:` and up to 5 notes whose filename, title or alias is spelled alike (`difflib` ratio at least 0.8), most alike first
 
 ### tag.py (tag)
 
