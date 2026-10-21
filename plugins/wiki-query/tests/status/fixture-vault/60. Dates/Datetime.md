@@ -1,0 +1,5 @@
+---
+status: draft
+updated: 2026-08-20T10:30:00
+---
+# Datetime
