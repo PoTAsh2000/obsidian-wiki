@@ -14,7 +14,7 @@ Stores the vault path for the first time. Use it right after installing the mark
 
 ### `/wiki-vault:overwrite [vault path]`
 
-Replaces the stored vault path, for example after you moved or renamed the vault. It shows the old path next to the new one.
+Replaces the stored vault path, for example after you moved or renamed the vault. It shows the old path next to the new one, leaves the file alone when the new path is the same folder (also through a symlink or junction), and warns when the new folder has no `CLAUDE.md` or no `.obsidian` folder. When you typed a subfolder of a vault, or the folder just above one vault, it names the vault folder to use instead.
 
 - `/wiki-vault:overwrite D:/Notes/Vault`
 
@@ -104,13 +104,33 @@ User errors (exit 3) go to stdout as `reply:` or `ask:` lines; system and usage 
 * Check the arguments: one vault path, optional `--force` before or after it
   * Wrong arguments: stop with a usage error
 * Clean the path through `vault.py`
+  * One pair of surrounding quotes (`"..."` or `'...'`) goes, as Explorer "Copy as path" adds them
+  * A leading `~` becomes the home folder
   * Empty, not absolute, or it holds a line break: stop with a user error
+  * On Windows store it as `C:/...`, also when typed as `/c/...`, `/mnt/c/...` (WSL) or `c:/...`
+  * `.` and `..` segments collapse lexically, without following symlinks
+  * Path is a file, not a folder: stop with `not a folder: <path>`, also with `--force`
   * Folder missing and no `--force`: stop with `folder not found: <path>`
+    * The parent holds exactly one folder whose name nearly matches (case, a typo, a space or dash; `difflib`, cutoff 0.8): the ask names it and `on-yes: <that path>` follows, so a yes reruns with it and "anyway" reruns with `--force`
+    * The parent folder is missing too: the ask says so (wrong drive letter, unmounted share), since a forced save points every skill at nothing
+  * Path is `~/.claude` or inside it: stop with a user error, also with `--force`
+  * Path is a drive root (`/`, `C:/`, a bare UNC share) or the home folder: stop with a user error, also with `--force`
+  * Every user error also prints `ask: <question>` for the user; folder not found adds `on-no: <reply>`, and a yes reruns with `--force`
 * Read the old path, if any
   * File cannot be read: stop with a system error
-* Write the new path through a temp file, so a failed write keeps the old file
+* Same folder as the old path: write nothing, reply `Vault unchanged: <old path>`
+  * Same means equal after the Git Bash form `/c/...` becomes `C:/...`; on Windows also ignoring case and Unicode normalization
+  * Same also means both exist and are one directory (same device and inode), for example through a symlink or junction; inode 0 (FAT, exFAT, some network shares) proves nothing and is skipped
+* Otherwise write the new path through a temp file, so a failed write keeps the old file
   * Write fails: stop with a system error
-* Print `path: <saved path>` and `old: <old path>` (or `none`)
+  * Reply `Vault configured: <path>`, plus ` (was: <old path>)` when there was one
+* Typed path is itself a symlink or junction: add `Note: <path> points to <target>.` to the reply
+* Path is a `//wsl$/...` or `//wsl.localhost/...` share: add a warning that Git Bash tools may be slow or fail there
+* Folder has no `CLAUDE.md`: add a warning to the reply, the path stays saved
+  * A parent folder has a `CLAUDE.md` or `.obsidian` folder: add a hint naming the closest one as the vault root
+* Folder exists without `.obsidian` and no such parent: add a warning to the reply, the path stays saved
+  * Exactly one direct child folder has a `CLAUDE.md` or `.obsidian` folder: name that child as the vault instead of the warning
+* Print `path: <saved path>`, `old: <old path>` (or `none`) and `reply: <reply>`
 
 ### delete.py (delete)
 
