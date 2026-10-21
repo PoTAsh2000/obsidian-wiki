@@ -27,10 +27,11 @@ Lists notes per frontmatter tag, one block per tag. A leading `#` is ignored.
 
 ### `/wiki-query:topic <topic>...`
 
-Lists notes per frontmatter `topic`, one block per topic. The topic must match the whole value, case-insensitive.
+Lists notes per frontmatter `topic`, one block per topic, with each note's `status` after it, for example `(draft)`. The topic must match the whole value, case-insensitive (`Straße` matches `STRASSE`, and accents match however they are encoded).
 
 - `/wiki-query:topic seals`
 - `/wiki-query:topic ai tooling`
+- `/wiki-query:topic Supply Chain, EDI` (a comma lets a topic hold spaces)
 
 ### `/wiki-query:status [--all] [<status>...]`
 
@@ -124,16 +125,24 @@ Checks the wikilinks of an answer before Claude replies.
 
 ### topic.py (topic)
 
+* Take the topics from the arguments, or without arguments from stdin, one argument per line: the skill sends the topics on stdin through a quoted heredoc, so the shell never parses them, apostrophes included
+* Split an argument with a comma on commas and trim each part, any other argument on whitespace
 * Check the options
   * Unknown option: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-  * No topics: print `ERROR: no topic given`, so Claude asks for them
-* Read the `topic` of every note, skipping dot folders, `Attachments` and `90. Templates`
-  * A note cannot be read: stop with a system error
-* Print one block per topic with the matching notes
+  * No topics: print `ERROR: no topic given` and a `known topics:` line with every topic in the vault and its note count, so Claude asks which ones
+* Read the `topic` and `status` of every note, skipping dot folders, `Attachments`, `90. Templates`, the vault `CLAUDE.md` and folder links (symlinks, junctions)
+  * Frontmatter without a closing `---` or `...`: no topics
+  * A leading BOM is ignored, quoted values are unquoted with their YAML escapes (`''`, `\"`, `\\`), and a comma inside a quoted inline list item does not split it
+  * An unquoted ` #` comment is dropped from topic and status values (`C#` stays), and a topic written as a link (`[[EDI]]`, `[[30. Knowledge/EDI|EDI]]`) counts as its alias, or else the note name
+  * Topics match after NFC normalization and case folding
+  * A note or subfolder cannot be read: skip it and name it in a last `skipped:` line
+  * The vault folder cannot be read: stop with a system error
+* Print one block per topic with the matching notes, sorted case-insensitively, each with its status in parentheses when it has one
   * Topic without notes: `- nothing found`
   * No topic has notes: `Nothing found.`
+  * A topic without notes: a last `did you mean:` line with up to three known topics that contain it, are contained in it or are spelled close to it, so a typo needs no second call
 
 ### status.py (status)
 
