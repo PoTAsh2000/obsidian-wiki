@@ -1,0 +1,16 @@
+crlf:
+- 50. Formats/CRLF.md (draft)
+cr:
+- 50. Formats/CR.md (draft)
+bom:
+- 50. Formats/BOM.md (draft)
+singular:
+- 50. Formats/Singular.md (draft)
+comma-a:
+- 50. Formats/Comma.md (draft)
+comma-b:
+- 50. Formats/Comma.md (draft)
+hashed:
+- 50. Formats/Hashed.md (draft)
+commented:
+- 50. Formats/Commented.md (draft)

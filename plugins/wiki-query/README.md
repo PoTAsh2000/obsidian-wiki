@@ -20,10 +20,12 @@ Lists notes whose filename or first `# ` title contains the text, case-insensiti
 
 ### `/wiki-query:tag <tag>...`
 
-Lists notes per frontmatter tag, one block per tag. A leading `#` is ignored.
+Lists notes per frontmatter tag, one block per tag, with each note's status. A leading `#` is ignored. A parent tag also finds nested tags: `proj` finds `proj/edi`. Tags joined with `+` give one block of the notes that have all of them: `ai+tooling`. Without a tag it shows the vault's tags with counts, nested tags under their parent. Add `--inline` to also find inline `#tags` in the note body.
 
 - `/wiki-query:tag mammals reefs`
 - `/wiki-query:tag #tooling`
+- `/wiki-query:tag ai+tooling`
+- `/wiki-query:tag tooling --inline`
 
 ### `/wiki-query:topic <topic>...`
 
@@ -114,14 +116,24 @@ Checks the wikilinks of an answer before Claude replies.
 
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-* Split the arguments into tags and drop a leading `#`
-  * Tag with spaces, quotes, brackets or shell symbols: print an `ERROR:` line and stop
-  * No tags: print `need: tags`, so Claude asks for them
-* Read the `tags` of every note, skipping dot folders, `Attachments` and `90. Templates`
-  * A note cannot be read: stop with a system error
-* Print `found: yes` or `found: no`, then one block per tag with the matching notes
+* Split the arguments into tags, drop a leading `#` and repeated tags (case-insensitive, also for non-ASCII letters)
+  * Tag with anything but letters, digits, `_`, `-` and `/`, or with only digits (`2026`): print an `ERROR:` line and stop, as Obsidian does not read it as a tag
+* Read the `tags` and `status` from the frontmatter of every note (`.md` in any case, so also `.MD`), skipping dot folders, `Attachments` and `90. Templates`
+  * Only the lines up to the closing `---` are read, not the whole note
+  * A note cannot be read: skip it; a vault folder cannot be listed: stop with a system error
+  * Accept the spellings Obsidian reads: `tags:` or `tag:`, an inline list, a `- item` list, `a, b`, a leading `#` and a trailing `# comment`
+  * Notes with a BOM or with CRLF or CR line endings are read the same way
+  * Digit-only values (`"2026"`) are not tags: they never match and are not counted
+* With the word `--inline`: also read `#tag` words in the note body, skipping fenced and inline code, headings, URLs and wikilinks; a note matched through a body-only tag shows `inline` after its status
+* No tags: print `need: tags` and the vault's tags with note counts, most used first, at most 50 lines, so Claude asks which ones
+  * Nested tags are indented under their parent, and the parent counts every note with it or a child once, so a whole branch can be picked
+* Print `found: yes` or `found: no`, then one block per tag with the matching notes and their status
+  * A parent tag also matches nested tags (`proj` finds `proj/edi`); the matched nested tag is shown after the status
+  * Tags joined with `+` (`ai+tooling`): one block of the notes that have every tag, nested matching per tag
+  * At most 100 notes per block, then a `- ... N more` line with the number left out
   * Tag without notes: `- nothing found`
   * No tag has notes: `Nothing found.`
+  * Tag without notes and a similar vault tag (near spelling, or a nested tag ending in it): a `did you mean` line
 
 ### topic.py (topic)
 
