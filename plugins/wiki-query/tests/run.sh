@@ -24,13 +24,8 @@ code() {
 
 before=$(cd "$vault" && find . -type f -exec md5sum {} + | sort)
 
-check name-middle 0 name engine
-check name-mixed-case-spaces 0 name CONTEXT ENG
-check name-filename-beats-alias 0 name context
-check name-title 0 name mapping
-check name-title-after-code 0 name loose
-check name-alias-only 0 name sop
-check nothing 1 name not a title
+# name is covered by the Python tests in tests/name; find.sh serves status, tag and topic.
+
 check tag-several 0 tag ai tooling missing
 check tag-mixed-case 0 tag AI
 check nothing 1 tag missing

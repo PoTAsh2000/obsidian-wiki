@@ -1,1 +1,1 @@
-- 40. Projects/proj-edi.md
+- [[proj-edi]] 40. Projects/proj-edi.md (title: EDI Mapping Project, draft)
