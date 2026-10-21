@@ -6,7 +6,7 @@ Finds what you already know before you research or write it again. Ask a questio
 
 ### `/wiki-query:query <question>`
 
-Answers a question from your notes only. Claude searches with the key terms and synonyms, reads the best matches, and cites every claim with the note it came from. It marks `draft` and `review` notes as not yet approved, and says so when your notes do not cover the question. Use it when you want to know what your notes say, not for general questions.
+Answers a question from your notes only. Claude searches with the key terms and synonyms, answers from the matching lines the search prints, opens only the matching section of a note when those lines are not enough, and cites every claim with the note it came from. It marks `draft` and `review` notes as not yet approved, and says so when your notes do not cover the question. Use it when you want to know what your notes say, not for general questions.
 
 - `/wiki-query:query how do seals stay warm?`
 - "what do my notes say about context engineering?"
@@ -67,15 +67,35 @@ An `ERROR:` line always ends with exit 0, also in the scripts that import vault.
 
 Ranks notes for the question, so Claude reads the best ones first.
 
-* Check the arguments: optional `--limit` (1 to 200, default 20), one or more terms
+* Check the arguments: optional `--limit` (1 to 200, default 20), `--excerpts` and `--links` (1 to 20), 1 to 20 terms of up to 200 characters
   * Missing or invalid argument: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-* Read every note, skipping dot folders, `Attachments`, `90. Templates` and the vault `CLAUDE.md`
+* Read every note, skipping dot folders, `Attachments`, `90. Templates`, the vault `CLAUDE.md` and notes that resolve outside the vault (symlinks, junctions)
   * A note cannot be read: stop with a system error
-* Score each term, case-insensitive: filename and title count most, then aliases, then tags and topic, then body lines
-* Print the notes with a hit, best first, with score, status and where each term hit
+* Score each term, case-insensitive (Unicode normalized, so `cafe` with a decomposed accent from macOS matches `café`, and `strasse` matches `straße`): filename and title count most, then aliases, then tags and topic, then body lines
+  * A whole word (plural included) scores full points, a match inside a word (`edi` in `credit`) a fifth
+  * Body hits are weighted by how rare the term is across the notes (BM25 style, counted per run, nothing cached), so a rare term outweighs a common one
+  * Each extra term that hits as a whole word in the same section as another adds 2 points (best section only, at most 6, so it never beats a filename or title hit)
+* Print the notes with a hit, best first, with score, status, where each term hit and the shortest wikilink that is unique in the vault
+  * Frontmatter `created`, `updated` (or `modified`) and `source` (or `url`) when set, so Claude can date and source evidence without opening the note
+  * Equal score: notes in `99. Archived` come last and are marked `archived: yes`
   * Nothing matches: print `matches: 0`
+* `--excerpts <n>`: under each note, the n best matching lines outside code fences (most rare terms as whole words, one per section first, printed in line order), with line number, nearest heading and the line range of that section (up to the next heading of the same or higher level), cut to 160 characters
+* No note has a whole-word hit (or nothing matches): print a `suggest:` line per term with up to 10 close words from note names, titles, aliases, tags and topics
+* `--links <n>`: for the top n notes, their `[[links]]` and `related` entries resolved like Obsidian (path and status, or `unresolved`), and the notes that link to them
+
+### cite.py (query)
+
+Checks the wikilinks of an answer before Claude replies.
+
+* Check the arguments: one or more `[[Note]]`, `[[Note#Heading]]` or bare targets
+  * None given: stop with a usage error
+* Get the vault from `vault.py`
+  * Vault problem: print the `ERROR:` line and stop
+* Resolve each link like `search.py` and check its heading or `^block`
+  * All ok: print nothing, exit 0
+  * Otherwise one line per bad link (`unresolved`, `ambiguous`, `heading`) with the closest fix when there is one, exit 1
 
 ### name.py (name)
 

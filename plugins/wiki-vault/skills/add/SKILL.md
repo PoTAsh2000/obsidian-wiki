@@ -2,36 +2,29 @@
 name: add
 description: Configure the Obsidian vault folder once for all obsidian-wiki plugins. Use when the user runs /wiki-vault:add or asks to set up or configure their Obsidian vault path for the wiki skills.
 argument-hint: "[vault path]"
+model: haiku
+effort: low
+allowed-tools: Bash(python3:*)
 ---
 
 # Add the vault path
 
-Stores the vault path in `~/.claude/obsidian-wiki/vault-path`, the one place all obsidian-wiki skills read it from. Only adds; it never changes a path that is already there.
+Stores the vault path in `~/.claude/obsidian-wiki/vault-path`. Never changes a stored path or touches the vault.
 
-## 1. Check if a path is configured
+## 1. Current state
 
-```bash
-cat ~/.claude/obsidian-wiki/vault-path 2>/dev/null
-```
+!`python3 "${CLAUDE_SKILL_DIR}/scripts/status.py"`
 
-Output not empty: reply `Vault is already configured: <path>. Use /wiki-vault:overwrite to change it.` and stop.
+A `reply:` line: relay its text and stop.
 
 ## 2. Get the path
 
-Use `$ARGUMENTS` as the path. Empty: ask the user once for the absolute path to the root folder of their vault. Replace every `\` with `/`.
+Path: `$ARGUMENTS`. Empty: ask once to pick a `candidate:` path (without its ` (...)` marks) or type another; no candidates: ask once for the absolute path of the vault root folder.
 
-## 3. Check the folder
+## 3. Save
 
-```bash
-[ -d "<path>" ]
-```
+Run `python3 "${CLAUDE_SKILL_DIR}/scripts/add.py" "<path>"`, the path as one quoted argument.
 
-Folder not found: ask the user whether to configure it anyway. No: reply `Run /wiki-vault:add later when you are ready to configure the vault.` and stop.
-
-## 4. Save
-
-```bash
-mkdir -p ~/.claude/obsidian-wiki && printf '%s\n' "<path>" > ~/.claude/obsidian-wiki/vault-path
-```
-
-Reply `Vault configured: <path>`.
+- `reply:`: relay it and each `warning:` and `notice:` line as is, then stop.
+- `ask:`: ask its question. Yes: rerun add.py with the `yes:` arguments instead of `"<path>"`. No: rerun with the `no:` arguments; no `no:` line: reply `Run /wiki-vault:add later when you are ready to configure the vault.` and stop.
+- Exit 2: fix the call once (`add.py --help`) and retry. Still failing, or a `SYSTEM ERROR:` line: report it and stop.

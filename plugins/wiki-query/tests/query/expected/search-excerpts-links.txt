@@ -1,0 +1,23 @@
+terms: seal, warm
+matches: 4
+shown: 4
+- 30. Knowledge/Seals.md | score: 23.5 | status: review | terms: 1/2 | in: name,title,body:5 | link: [[Seals]]
+  10 | Seals (8-19) | Seals are marine mammals. See [[Blubber|fat layer]] and [[Seals#Habitat]].
+  18 | Habitat (12-19) | A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A seal A s...
+  19 | Habitat (12-19) | A seal hunts fish, unlike [[Ghost]].
+- 40. Projects/Blubber.md | score: 6.4 | status: evergreen | terms: 2/2 | in: body:2 | link: [[40. Projects/Blubber]]
+  6 | Blubber (4-6) | Keeps a seal warm, see [[seals]].
+- Loose Note.md | score: 6.4 | status: none | terms: 2/2 | in: body:2 | link: [[Loose Note]]
+  3 | - (1-3) | A seal was seen on a warm day.
+- 99. Archived/Blubber.md | score: 6.4 | status: archived | terms: 2/2 | in: body:2 | archived: yes | link: [[99. Archived/Blubber]]
+  6 | Blubber (4-6) | Old view: keeps a seal warm, see [[Seals]].
+links:
+- 30. Knowledge/Seals.md
+    out: Blubber = 40. Projects/Blubber.md (evergreen)
+    out: Ghost = unresolved
+    out: Walrus = 90. Templates/Walrus.md (template)
+    out: Missing Note = unresolved
+    in: 40. Projects/Blubber.md, 99. Archived/Blubber.md
+- 40. Projects/Blubber.md
+    out: seals = 30. Knowledge/Seals.md (review)
+    in: 30. Knowledge/Seals.md
