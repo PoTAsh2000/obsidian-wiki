@@ -32,11 +32,13 @@ Lists notes per frontmatter `topic`, one block per topic. The topic must match t
 - `/wiki-query:topic seals`
 - `/wiki-query:topic ai tooling`
 
-### `/wiki-query:status <status>...`
+### `/wiki-query:status [--all] [<status>...]`
 
-Lists notes per frontmatter status (`draft`, `review`, `evergreen`, `archived`), one block per status. Use it to see what is waiting for ingest or review. It never changes a status.
+Lists notes per frontmatter status (`draft`, `review`, `evergreen`, `archived`), one block per status, oldest first with their `updated` (else `created`) date. Use it to see what is waiting for ingest or review. Without a status it shows how many notes have each status, and how many have none. A misspelled status gets a "did you mean" hint. A block shows at most the 50 oldest notes and ends with `- ... and <n> more`; `--all` shows every note. It never changes a status.
 
+- `/wiki-query:status`
 - `/wiki-query:status review draft`
+- `/wiki-query:status --all evergreen`
 
 ## Vault
 
@@ -135,16 +137,24 @@ Checks the wikilinks of an answer before Claude replies.
 
 ### status.py (status)
 
-* Check the arguments
+* Read the arguments from stdin (`-`, the form the skill uses, so user text never passes through shell quoting) or the command line
+* Check the arguments: optional `--all`, zero or more statuses
   * Unknown option: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem: print the `ERROR:` line and stop
-  * No status given, or a status with other characters than letters, digits, `_` or `-`: print an `ERROR:` line, so Claude asks again
-* Read the `status` of every note, skipping dot folders, `Attachments` and `90. Templates`
+  * A status with other characters than letters, digits, `_` or `-`: print an `ERROR:` line with the accepted form; Claude relays it and the user runs the skill again
+* Read the `status`, `updated` and `created` of every note (keys in any case, the first spelling wins), skipping dot folders, `Attachments`, `90. Templates` (any case on Windows) and the vault `CLAUDE.md`
+  * Symlinks and junctions are never followed, so only real files inside the vault count
+  * Frontmatter needs a closing `---` or `...` line; a leading BOM is ignored
   * A note cannot be read: stop with a system error
-* Print `found: yes` or `found: no`, then one block per status with the matching notes
+* No status given: print `found: yes` and one `<status>: <count>` line per status in the vault, in lifecycle order (`draft`, `review`, `evergreen`, `archived`), then others alphabetically, then `(no status): <count>` for notes without a usable status (left out when 0)
+* Otherwise print `found: yes` or `found: no`, then one block per status with the matching notes, oldest first, each with its `updated` (else `created`) date
+  * Only an ISO date (`YYYY-MM-DD`, a time after it is cut off) counts; a bad `updated` falls back to `created`
+  * No date or a non-ISO date: sorted last, a non-ISO one shown as `(bad date: <value>)`
+  * More than 50 notes: the 50 oldest, then `- ... and <n> more` (`--all` shows every note)
   * Status without notes: `- nothing found`
   * No status has notes: `Nothing found.`
+  * Unknown status close to one in the vault: a `did you mean: <status>` line
 
 ## Tests
 
