@@ -26,7 +26,7 @@ Never ask for the vault path and never write it; only `wiki-vault` does that. Va
 Invoke the skill `wiki-lint:lint` by name with no arguments (never a lint script by path); it moves stray drafts into the Inbox. Exit 0 or 4: continue. Exit 1, 2 or 3: show the error line and stop. Show nothing of its result now; keep:
 
 - `orphans`: candidates for orphan rows (only this full run gives them).
-- `findings` for the selected drafts (`frontmatter-missing`, `empty-section`, `ambiguous-link`, `long-note`, `related-unlinked`, ...): turn them into plan rows.
+- `findings` for the selected drafts (`frontmatter-missing`, `empty-section`, `ambiguous-link`, `long-note`, ...): turn them into plan rows.
 - `placeholderLinks`: never touch these links.
 - `movedToInbox` and `removedDeadLinks`: keep them for the summary in step 7.
 
@@ -52,7 +52,7 @@ A draft or orphan (often a pasted web page or chat export) is material to file: 
 
 - **Frontmatter:** from the `frontmatter:` line, an `actions: formatter` row plus one `actions: set <key>: <value>` or `actions: add <tag|alias|related>: <value>` row per value the schema in the vault `CLAUDE.md` needs. A `type` that is not in the allowed list is an `actions: new type: <type>` row.
 - **Structure:** tidy headings and layout (part of `formatter`); `actions: fill section: <heading>` for an empty section, `actions: fix link: [[X]]` for an ambiguous link.
-- **Links:** `new links: [[A]], [[B]]` for the relevant `mention:` lines and other existing notes from the index.
+- **Links:** `new links: [[A]], [[B]]` for the relevant `mention:` lines and other existing notes from the index. A `new links:` row always fills `related`; a draft without any `related` note gets at least one row.
 - **Orphans:** for each note in lint's `orphans` list that is really related to this draft, an `orphan` row with `new links:` from the orphan to the draft (or a link from the draft to the orphan in the draft's rows). Unrelated orphans get no row.
 - **Incoming links:** for each `mentioned-in:` note where the mention really means this draft, a `linked` row with `new links:` from that note to the draft.
 - **Split:** a draft that covers more than one topic, or has a `long-note` finding, gets one `split into: [[A]], [[B]]` row that names a new note per other topic (rule 7 of the vault `CLAUDE.md`). The draft keeps its main topic and goes to its destination; the new notes start as drafts in `01. Inbox` for a next run. Names must be new: an existing note on that topic means a link or a merge instead.
@@ -85,7 +85,7 @@ For each `apply:` line, finish the note completely before the next one, without 
 python3 "${CLAUDE_SKILL_DIR}/scripts/plan.py" --run <id> --apply "<path>"
 ```
 
-It writes the approved frontmatter rows. For each `edit: <path> | <change>` line, do it with Edit (structure for `formatter`, links, section; keep the meaning, never edit `status`). For `split into:`, create each `new: <path>` with Write: the vault frontmatter schema with `status: draft`, `created` today, `source: split from [[<draft>]]`, a `# <name>` heading, a summary and the text of that topic moved from the draft unchanged in meaning; then replace that text in the draft with one sentence that links the new note and says why. Never drop text and never write to a `new:` path that exists. Then run the same call with `--finish` instead of `--apply`; without `edit:` lines it finishes itself. Finishing moves the note with `status: review` (`path:`), keeps it (`kept:`) or merges it (`archived:` is the source's new path: add its content to the target with Edit; `skipped-ambiguous:` and `evergreen-target:` lines go under "Still to consider"). Exit 3 on a note: the ledger keeps the error; continue with the next note.
+It writes the approved frontmatter rows. For each `edit: <path> | <change>` line, do it with Edit (structure for `formatter`, links, section; keep the meaning, never edit `status`). Put a body link only where the running text already names the note or clearly refers to it; never add a section that only lists links (`## Related`, `## See also`), `related` holds them. For `split into:`, create each `new: <path>` with Write: the vault frontmatter schema with `status: draft`, `created` today, `source: split from [[<draft>]]`, a `# <name>` heading, a summary and the text of that topic moved from the draft unchanged in meaning; then replace that text in the draft with one sentence that links the new note and says why. Never drop text and never write to a `new:` path that exists. Then run the same call with `--finish` instead of `--apply`; without `edit:` lines it finishes itself. Finishing moves the note with `status: review` (`path:`), keeps it (`kept:`) or merges it (`archived:` is the source's new path: add its content to the target with Edit; `skipped-ambiguous:` and `evergreen-target:` lines go under "Still to consider"). Exit 3 on a note: the ledger keeps the error; continue with the next note.
 
 When every note is done, run the report once:
 
