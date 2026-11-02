@@ -469,6 +469,34 @@ class PromoteTest(Base):
                 finally:
                     promote.os.link = real_link
 
+    def test_status_write_retries_a_locked_note(self):
+        # a sync client holding the note makes os.replace fail for a moment: retry, then give up
+        # with a system error, never leaving the temp file behind
+        sys.path.insert(0, str(SCRIPTS))
+        import promote
+        note = self.v / "Locked.md"
+        note.write_bytes(b"---\nstatus: draft\n---\n# Locked\n")
+        real_replace, real_sleep, real_waits = promote.os.replace, promote.time.sleep, promote.RETRY_WAITS
+        fails = []
+
+        def locked(src, dst):
+            if fails and fails.pop():
+                raise PermissionError(5, "Access is denied")
+            real_replace(src, dst)
+
+        promote.os.replace, promote.time.sleep = locked, lambda _: None
+        try:
+            fails[:] = [True, True]
+            promote.set_status(self.v, "Locked.md", "review")
+            self.assertIn(b"status: review", note.read_bytes())
+            fails[:] = [True] * (len(real_waits) + 1)
+            with self.assertRaises(promote.Fail):
+                promote.set_status(self.v, "Locked.md", "evergreen")
+            self.assertIn(b"status: review", note.read_bytes())
+            self.assertEqual([p.name for p in self.v.iterdir() if p.name.startswith("Locked.md.")], [])
+        finally:
+            promote.os.replace, promote.time.sleep = real_replace, real_sleep
+
     def test_archive(self):
         self.promote(0, "path: 99. Archived/ACE notes.md\nstatus: archived",
                      "01. Inbox/ACE notes.md", "99. Archived", "archived")
