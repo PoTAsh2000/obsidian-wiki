@@ -1,5 +1,9 @@
 # Vault rules (fixture)
 
+```yaml
+source: https://...   # required for type how-to, optional otherwise
+```
+
 Allowed `type` values: `concept`, `knowledge`, `how-to`, `customer`, `project`, `meeting`, `dashboard`. The list can grow.
 
 ## Status lifecycle
