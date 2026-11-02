@@ -131,15 +131,51 @@ class EditTest(VaultCase):
     def test_prepare_unknown(self):
         self.edit("prepare", "Docker Basic", want=3)
         self.assertLine("suggest: Docker Basic -> Docker Basics")
+        self.edit("prepare", "Docker Basic add volumes", want=3)
+        self.assertEqual(self.out.splitlines(),
+                         ["suggest: Docker Basic -> Docker Basics", "request: add volumes"])
+
+    def test_prepare_split(self):
+        for text, request in (("Docker Basics add a section on volumes", "add a section on volumes"),
+                              ("Docker Basics: add x", "add x"),
+                              ('"Docker Basics": fix it', "fix it"),
+                              ("[[Docker Basics|x]] fix it", "fix it"),
+                              ("Containers 101 tidy", "tidy"),
+                              ("Docker Basics", "")):
+            info = self.prepare(text)
+            self.assertEqual((info["note"], info["request"]), (DOCKER, request), text)
+            self.assertTrue(self.out.splitlines()[-1].startswith("request:"))
+        self.prepare("Docker Basics\nadd x\nand y")
+        self.assertTrue(self.out.endswith("request: add x\nand y\n"), self.out)
+
+    def test_prepare_longest(self):
+        (self.vault / "20. Knowledge/Docker.md").write_text("Docker.\n", encoding="utf-8")
+        self.assertEqual(self.prepare("Docker Basics add")["note"], DOCKER)
+        self.assertEqual(self.prepare("Docker add")["note"], "20. Knowledge/Docker.md")
+        info = self.prepare("Docker Basics:change it")
+        self.assertEqual((info["note"], info["request"]), (DOCKER, "change it"))
+        info = self.prepare("Docker:fix")
+        self.assertEqual((info["note"], info["request"]), ("20. Knowledge/Docker.md", "fix"))
+
+    def test_prepare_quote_fallback(self):
+        (self.vault / "20. Knowledge/'s-Hertogenbosch Trip.md").write_text("Trip.\n", encoding="utf-8")
+        info = self.prepare("'s-Hertogenbosch Trip: add what's new")
+        self.assertEqual((info["note"], info["request"]),
+                         ("20. Knowledge/'s-Hertogenbosch Trip.md", "add what's new"))
+        info = self.prepare('"Docker Basics fix it')
+        self.assertEqual((info["note"], info["request"]), (DOCKER, "fix it"))
 
     def test_template_never_found(self):
         self.edit("prepare", "Note", want=3)
         self.edit("prepare", "90. Templates/Note.md", want=3)
 
     def test_several(self):
+        matches = ["match: 01. Inbox/Twin.md (status: draft)",
+                   "match: 20. Knowledge/Twin.md (status: evergreen)"]
         self.edit("prepare", "twin", want=3)
-        self.assertEqual(self.out.splitlines(), ["match: 01. Inbox/Twin.md (status: draft)",
-                                                 "match: 20. Knowledge/Twin.md (status: evergreen)"])
+        self.assertEqual(self.out.splitlines(), matches + ["request: "])
+        self.edit("prepare", "twin fix it", want=3)
+        self.assertEqual(self.out.splitlines(), matches + ["request: fix it"])
 
     def test_inbox_clash(self):
         self.edit("prepare", "20. Knowledge/Twin.md", want=3)
@@ -152,8 +188,8 @@ class EditTest(VaultCase):
         draft = self.change(info, "See [[Twin]].", "See [[Twin]].\n\n## Volumes\n\nKeep data.")
         self.publish(info)
         self.assertEqual(self.out.splitlines(), [
-            "edited: 01. Inbox/Docker Basics.md", f"from: {DOCKER}",
-            "status: draft (was evergreen)", "path-link: 30. Projects/Linker.md"])
+            f"Edited and moved to draft: 01. Inbox/Docker Basics.md (from {DOCKER}, was evergreen)",
+            "path-link: 30. Projects/Linker.md"])
         text = self.note("01. Inbox/Docker Basics.md")
         self.assertIn("status: draft\n", text)
         self.assertIn(f"updated: {TODAY}\n", text)
@@ -164,7 +200,8 @@ class EditTest(VaultCase):
     def test_publish_archived(self):
         info = self.prepare("Old Idea")
         self.publish(info)
-        self.assertLine("status: draft (was archived)")
+        self.assertLine("Edited and moved to draft: 01. Inbox/Old Idea.md "
+                        "(from 99. Archived/Old Idea.md, was archived)")
         self.assertIn("status: draft\n", self.note("01. Inbox/Old Idea.md"))
         self.assertFalse((self.vault / "99. Archived/Old Idea.md").exists())
 
@@ -174,8 +211,7 @@ class EditTest(VaultCase):
             self.change(info, "Text.", "New text.")
             self.publish(info)
             rel = f"01. Inbox/{name}.md"
-            self.assertEqual(self.out.splitlines()[:3],
-                             [f"edited: {rel}", f"from: {rel}", f"status: draft (was {was})"])
+            self.assertEqual(self.out.splitlines(), [f"Edited in place: {rel} (was {was})"])
             self.assertEqual(self.note(rel), "---\ntype: knowledge\ntopic: AI\nstatus: draft\n---\n"
                                              f"# {name}\n\nNew text.\n")
 
@@ -193,7 +229,8 @@ class EditTest(VaultCase):
 
     def test_publish_no_status(self):
         self.publish(self.prepare("No Status"))
-        self.assertLine("status: draft (was none)")
+        self.assertLine("Edited and moved to draft: 01. Inbox/No Status.md "
+                        "(from 20. Knowledge/No Status.md, was none)")
         self.assertEqual(self.note("01. Inbox/No Status.md"),
                          "---\ntype: knowledge\ntopic: AI\nstatus: draft\n---\n# No Status\n\nText.\n")
 
@@ -223,6 +260,13 @@ class EditTest(VaultCase):
         self.assertLine("secret: line 10: password or secret")
         self.assertEqual(before, sums(self.vault))
         self.publish(info, "--allow-secrets")
+
+    def test_secrets_existing(self):
+        (self.vault / "20. Knowledge/Creds.md").write_text(
+            "---\nstatus: review\n---\nExample: password=changeme\n\nText.\n", encoding="utf-8")
+        info = self.prepare("Creds")
+        self.change(info, "Text.", "New.")
+        self.publish(info)
 
     def test_new_dead_link(self):
         info = self.prepare("Docker Basics")
@@ -270,6 +314,73 @@ class EditTest(VaultCase):
         info = self.prepare("Docker Basics")
         Path(info["draft_file"]).unlink()
         self.publish(info, want=2)
+
+
+def load_edit():
+    """edit.py as a module, for failure injection in-process."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("edit_script", EDIT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class RaceTest(VaultCase):
+    """A sync tool or Obsidian changing files during publish never loses an edit."""
+
+    def setUp(self):
+        super().setUp()
+        self.mod = load_edit()
+        self.save = sys.modules["save"]  # the save.py module edit.py imported
+        self.patch(tempfile, "tempdir", str(self.tmp))
+
+    def patch(self, obj, name, value):
+        self.addCleanup(setattr, obj, name, getattr(obj, name))
+        setattr(obj, name, value)
+
+    def publish(self, rel, want):
+        """prepare and publish rel in-process; return the Fail code."""
+        info = dict(line.split(": ", 1) for line in self.mod.prepare(self.vault, rel))
+        self.draft = Path(info["draft_file"])
+        with self.assertRaises(self.mod.Fail) as cm:
+            self.mod.publish(self.vault, info["note"], self.draft, info["sha"], False)
+        self.assertEqual(cm.exception.code, want, str(cm.exception))
+        self.assertTrue(self.draft.exists(), "removed the draft")
+
+    def before_write(self, action):
+        """Run action right after publish wrote its temp file."""
+        real = self.save.write_temp
+
+        def racing(folder, data):
+            tmp = real(folder, data)
+            action()
+            return tmp
+        self.patch(self.save, "write_temp", racing)
+
+    def test_inbox_note_changed_before_replace(self):
+        note = self.vault / "01. Inbox/Inbox Draft.md"
+        self.before_write(lambda: note.write_bytes(b"obsidian edit\n"))
+        self.publish("01. Inbox/Inbox Draft.md", want=3)
+        self.assertEqual(note.read_bytes(), b"obsidian edit\n")
+
+    def test_inbox_target_created_before_move(self):
+        target = self.vault / "01. Inbox/Docker Basics.md"
+        source = (self.vault / DOCKER).read_bytes()
+        self.before_write(lambda: target.write_bytes(b"other\n"))
+        self.publish(DOCKER, want=3)
+        self.assertEqual(target.read_bytes(), b"other\n")
+        self.assertEqual((self.vault / DOCKER).read_bytes(), source)
+
+    def test_source_changed_after_copy(self):
+        real = self.mod.publish_file
+
+        def racing(path, data):
+            real(path, data)
+            (self.vault / DOCKER).write_bytes(b"synced\n")
+        self.patch(self.mod, "publish_file", racing)
+        self.publish(DOCKER, want=1)
+        self.assertEqual((self.vault / DOCKER).read_bytes(), b"synced\n")
+        self.assertIn("status: draft", (self.vault / "01. Inbox/Docker Basics.md").read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

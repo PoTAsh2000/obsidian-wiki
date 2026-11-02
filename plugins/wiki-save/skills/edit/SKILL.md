@@ -1,7 +1,8 @@
 ---
 name: edit
-description: Edit an existing note in the user's Obsidian vault the way the user describes, then set it back to status draft and move it to 01. Inbox. Use when the user runs /wiki-save:edit or asks to change, rewrite or correct a named note in their vault, Obsidian or notes, for example "edit my note Docker Basics and add a section on volumes". Do not use for saving a new note (wiki-save:save), for editing code or files outside the vault, or for only changing a status.
+description: Edit an existing note in the user's Obsidian vault the way the user describes, then set it back to status draft and move it to 01. Inbox. Runs only when the user types /wiki-save:edit. Do not use for saving a new note (wiki-save:save), for processing or sorting Inbox drafts (wiki-ingest:ingest), for editing code or files outside the vault, or for only changing a status.
 argument-hint: "<note name> <how to change it>"
+disable-model-invocation: true
 allowed-tools: Bash(python3:*), Read, Edit
 ---
 
@@ -21,22 +22,22 @@ Changes one note the user names, sets it to `draft` and moves it to `01. Inbox` 
 
 Quoting: put every argument you pass to `edit.py` in single quotes and write each `'` inside it as `'\''`, so any name works (`Tom's Cafe` becomes `'Tom'\''s Cafe'`).
 
-Split `$ARGUMENTS` into the note name (leading quoted text, a `[[...]]` link, or the text before the first `:` or newline) and the change request. Unclear: ask once. A rename is asked: say edit keeps the filename, then go on with the rest.
+`$ARGUMENTS` empty: ask once which note and what change. Otherwise pass `$ARGUMENTS` unchanged as one argument (quoting rule above); `edit.py` takes the longest leading part that names a note (path, `[[link]]`, filename or alias) and prints the rest as `request:`.
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/edit.py" prepare '<note>'
+python3 "${CLAUDE_SKILL_DIR}/scripts/edit.py" prepare '<$ARGUMENTS>'
 ```
 
-- Exit 0: an `ERROR:` line, relay it and stop. Otherwise keep `note`, `status`, `draft_file` and `sha`.
-- Exit 3, `match:` lines: ask which one, rerun with its path.
-- Exit 3, `suggest:` line: offer that note, rerun once the user agrees.
+- Exit 0: an `ERROR:` line, relay it and stop. Otherwise keep `note`, `status`, `draft_file`, `sha` and `request` (everything after `request: `, maybe several lines). Empty `request`: ask once what to change. A rename is asked: say edit keeps the filename, then go on with the rest.
+- Exit 3, `match:` lines: ask which one, rerun with `'<path> <request>'`.
+- Exit 3, `suggest:` line: offer that note; once the user agrees, rerun with `'<suggested name> <request>'`.
 - Exit 3, `exists:` line: report that `01. Inbox` already holds a note with that name and stop.
 - Exit 2, frontmatter without a closing `---`: say the note must be fixed first and stop.
 - Exit 2 or 1, or other exit 3: report and stop.
 
 ## 3. Edit the draft
 
-Read `draft_file`, then apply the change with Edit on `draft_file` only (a temp copy, not in the vault). Change only what the user asked; the `# ` heading may change. Do not touch `status` or `updated`, `edit.py` sets them. English, no em dashes. Follow the vault rules for content. Add no URLs or facts that are not in the request or the conversation.
+Read `draft_file`, then apply the change with Edit on `draft_file` only (a temp copy, not in the vault). Change only what `request` asks; the `# ` heading may change. Do not touch `status` or `updated`, `edit.py` sets them. English, no em dashes. Follow the vault rules for content. Add no URLs or facts that are not in the request or the conversation.
 
 ## 4. Publish
 
@@ -59,4 +60,4 @@ On every failed publish, tell the user the edited draft is kept at `draft_file` 
 
 ## 5. Report
 
-One line: `Edited and moved to draft: <edited> (from <from>, was <old status>)`. `path-link:` lines: name those notes and say their path links to the old location may be dead now. Mention `/wiki-ingest:ingest`.
+Relay the first output line as is. `path-link:` lines: name those notes and say their path links to the old location may be dead now. Mention `/wiki-ingest:ingest`.

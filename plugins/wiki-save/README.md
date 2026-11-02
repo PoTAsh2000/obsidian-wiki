@@ -13,10 +13,11 @@ Saves the last useful answer or insight of the conversation as a standalone note
 
 ### `/wiki-save:edit <note> <change>`
 
-Changes one existing note the way you describe, sets its `status` to `draft` whatever it was, and moves it to `01. Inbox` from wherever it is (also `99. Archived`). A note directly in `01. Inbox` is edited in place. The filename never changes, so `[[Name]]` links keep working; notes that link the old location by path are listed. Claude edits a temp copy, never the note itself, and changes only what you asked.
+Changes one existing note the way you describe, sets its `status` to `draft` whatever it was, and moves it to `01. Inbox` from wherever it is (also `99. Archived`). A note directly in `01. Inbox` is edited in place. The filename never changes, so `[[Name]]` links keep working; notes that link the old location by path are listed. Claude edits a temp copy, never the note itself, and changes only what you asked. Runs only when you type `/wiki-save:edit`. The longest start of your text that names a note (filename, path, `[[link]]` or alias) is the note; the rest is the change.
 
 - `/wiki-save:edit Docker Basics add a section on volumes`
-- `/wiki-save:edit "[[Seals]]": fix the typo in the first paragraph`
+- `/wiki-save:edit [[Seals]] fix the typo in the first paragraph`
+- `/wiki-save:edit "20. Knowledge/Seals.md": shorten the intro`
 
 ## Vault
 
@@ -109,22 +110,23 @@ Writes the note that Claude prepared in the draft file.
 
 ### edit.py (edit)
 
-Edits one note in two steps, so Claude only ever changes a temp copy. Imports its helpers (`key`, `note_files`, the secret scan, the link check, the temp file writer) from the save scripts of this plugin; `with_status` is copied from wiki-ingest.
+Edits one note in two steps, so Claude only ever changes a temp copy. Imports its helpers (`key`, `note_files`, the secret scan, the link check, `publish_file` and `replace_if_unchanged`) from the save scripts of this plugin.
 
-* Check the arguments: `prepare <note>` or `publish [--allow-secrets] <note> <draft-file> <sha>`
+* Check the arguments: `prepare <text>` or `publish [--allow-secrets] <note> <draft-file> <sha>`
   * Anything else: stop with a usage error
 * Get the vault from `vault.py`
   * Vault problem, or no `01. Inbox` folder: print the `ERROR:` line and stop, nothing changed
-* Find the note by path, `[[link]]` or name (case-insensitive, Unicode-normalized), then by alias when no filename matches
+* `prepare`: the longest start of the text (a leading quoted name or `[[link]]`, then up to 20 words, where a `:` also ends a word) that names a note is the note; the rest is the change request, printed last as `request: <rest>`
+  * A note is named by path, `[[link]]` or filename (case-insensitive, Unicode-normalized); a filename or path always beats an alias, also a longer alias
   * Path leaves the vault or enters a dot folder: stop with a usage error
   * Skips dot folders and `90. Templates`
-  * None: print a `suggest:` line for a close name and stop with a user error
-  * Several: print `match: <path> (status: <status>)` per note and stop with a user error
+  * None: print one `suggest:` line (the closest name over all starts) and `request:`, stop with a user error
+  * Several: print `match: <path> (status: <status>)` per note and `request:`, stop with a user error
 * The note is not directly in `01. Inbox` and `01. Inbox` already holds a note with that filename: print `exists:` and stop with a user error
 * `prepare`: copy the note byte for byte to a temp draft file outside the vault and print its path, the target and a sha of the note
 * `publish`: check and write the edited draft
   * The note changed since `prepare` (sha differs): stop with a user error, nothing written
-  * Secrets in the draft (same scan as save.py): print `secret:` lines and stop with a user error; `--allow-secrets` skips the scan
+  * Secrets on new or changed lines of the draft (same scan as save.py; lines the note already had pass): print `secret:` lines and stop with a user error; `--allow-secrets` skips the scan
   * Opening `---` without a closing one (also checked on the note in `prepare`): stop with a usage error
   * The draft lost the frontmatter the note had, or has no body text: stop with a usage error, so an edit never empties a note
   * No frontmatter: add one with only `status: draft`; else set `status: draft` and an existing `updated:` to today (never added)
@@ -132,7 +134,7 @@ Edits one note in two steps, so Claude only ever changes a temp copy. Imports it
   * Line endings and odd bytes are kept
   * Directly in `01. Inbox`: replace the note in one step, only when it did not change meanwhile
   * Elsewhere: publish `01. Inbox/<filename>` with a hard link (never overwrites; exclusive create without hard links), then remove the old file to complete the move, only when it did not change meanwhile (otherwise a system error, both files kept)
-  * Delete the draft file and print the edited path, the old path and the old status
+  * Delete the draft file and print one line for the user: `Edited and moved to draft: <target> (from <old path>, was <status>)` or `Edited in place: <target> (was <status>)`
   * Moved: print `path-link: <note>` for each note that links the old location by path (report only)
 
 ## Tests
