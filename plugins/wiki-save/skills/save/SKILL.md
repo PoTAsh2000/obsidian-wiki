@@ -7,7 +7,7 @@ allowed-tools: Bash(python3:*), Write, Edit, Read
 
 # Save to the vault
 
-Saves one answer as one new `draft` note in `01. Inbox`, or appends it to an Inbox draft the user picks. `save.py` never changes another note, overwrites or deletes one.
+Saves one answer as new `draft` notes in `01. Inbox`, one note per topic, or appends it to an Inbox draft the user picks. `save.py` never changes another note, overwrites or deletes one.
 
 ## 1. Read the vault CLAUDE.md
 
@@ -20,7 +20,11 @@ Saves one answer as one new `draft` note in `01. Inbox`, or appends it to an Inb
 
 ## 2. Content and title
 
-Keep only the useful answer, usually the last substantial one, as a standalone note in short sections. English, no em dashes. Keep URLs, citations, versions and quotes only when literally in the conversation; never add any; mark unchecked claims as unverified. Title: `$ARGUMENTS` as is, else pick a short one; never ask to confirm it.
+Keep only the useful answer, usually the last substantial one, as a standalone note in short sections.
+
+Atomic notes (the vault `CLAUDE.md` rules win on details): one note covers one topic and stays under about 1500 words. An answer with several distinct topics becomes several notes, each with its own title; `$ARGUMENTS` names the main one. A subtopic that only makes sense inside the main topic stays in it. Say in one line which notes you will save, without asking.
+
+Per note: English, no em dashes. Keep URLs, citations, versions and quotes only when literally in the conversation; never add any; mark unchecked claims as unverified. Title: `$ARGUMENTS` as is, else pick a short one; never ask to confirm it.
 
 ## 3. Write the draft file
 
@@ -29,12 +33,15 @@ Write tool on `draft_file` (a temp file, not in the vault):
 - Frontmatter: every property the vault `CLAUDE.md` requires, in its order. `status: draft`, dates `today`, `type` only from the allowed values (none fits: `knowledge`, and say so), `topic` from `topics` when one fits, sources like `claude session <today>`.
 - `related`: run `python3 "${CLAUDE_SKILL_DIR}/scripts/gather.py" --related '<keyword>' ...` once with a few keywords. Keep only `related:` candidates that really relate, never edit them; `[]` when none; link them in the body with `[[Note]]` where it helps. One clearly holds the same insight: say so in one line and offer to skip or save anyway, without more searches.
 - Then `# <Title>` and the body. `save.py` takes the title from this heading.
+- Body: right below the heading a summary of two or three sentences with the core of the note, then `##` sections that each make sense on their own. Every `related` note is also linked in the body, in a sentence that says why it relates.
 
 ## 4. Save
 
 ```bash
 python3 "${CLAUDE_SKILL_DIR}/scripts/save.py" '<draft_file>'
 ```
+
+Several notes: write and save them one at a time, reusing `draft_file`. A later note links the notes saved before it; an earlier note names a later one in plain text, and `/wiki-ingest:ingest` turns that into a link.
 
 `save.py` fixes filename characters. For another title, Edit the `# ` heading (the draft is kept on every error) and rerun. Options go right after `save.py`.
 
@@ -48,4 +55,4 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/save.py" '<draft_file>'
 
 ## 5. Report
 
-One line: `Saved as draft: <saved path>` or `Appended to draft: <appended path>`. `renamed: yes`: say the filename was adjusted. Mention `/wiki-ingest:ingest`.
+One line per note: `Saved as draft: <saved path>` or `Appended to draft: <appended path>`. `renamed: yes`: say the filename was adjusted. Mention `/wiki-ingest:ingest`.

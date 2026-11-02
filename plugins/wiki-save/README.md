@@ -8,6 +8,8 @@ Keeps a useful answer from a Claude conversation before it gets lost in the chat
 
 Saves the last useful answer or insight of the conversation as a standalone note. Without a title, Claude picks a short one itself and never asks you to confirm it; if that name is taken, it silently tries another (at most 3 tries). When a title you gave matches an Inbox draft, Claude offers to append to it or to save under another title. Normal language works too: "save this to my vault".
 
+An answer that covers several topics is saved as several atomic notes, one per topic, each starting with a short summary; later notes link the earlier ones.
+
 - `/wiki-save:save` (Claude picks a title)
 - `/wiki-save:save Dolphin sleep patterns`
 
