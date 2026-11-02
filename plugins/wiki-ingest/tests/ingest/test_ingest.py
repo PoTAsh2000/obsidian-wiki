@@ -956,6 +956,30 @@ Moved from draft to review:
         self.plan(3, "", "--approve", "--skip", "9")
         self.assert_err("USER ERROR: plan.py: there is no id 9")
 
+    def test_split_rows(self):
+        # split names must be new, usable names; only a draft row splits
+        drafts = "Tokens | draft | none | keep, x\nACE notes | draft | none | keep, y\n"
+        self.plan(3, "", rows=drafts + "Idea | draft | split into: [[ACE]], [[Bad: Name]] | 30. Knowledge\n"
+                  "Proj | orphan | split into: [[Proj Part]] | keep, x\n"
+                  "Idea | draft | split into: Idea Part | 30. Knowledge")
+        for err in ("row 3 (Idea): a note named ACE exists already",
+                    "row 3 (Idea): split note name not usable as a filename or link: Bad: Name",
+                    "row 4 (Proj): an orphan row only adds links", "row 5 (Idea): split into: takes [[Note]] links"):
+            self.assertIn(err, self.err)
+        self.plan(0, None, rows=drafts + "Idea | draft | split into: [[Idea Part]], [[Idea Other]] | 30. Knowledge")
+        self.plan(0, None, "--approve")
+        self.plan(0, "edit: 01. Inbox/Idea.md | split into: [[Idea Part]], [[Idea Other]]\n"
+                  "new: 01. Inbox/Idea Part.md\nnew: 01. Inbox/Idea Other.md", "--apply", "Idea")
+        # a split note made meanwhile stops the apply before anything is written
+        self.fresh()
+        self.check(0, None, "select", "all")
+        self.run_ = ["--run", self.run_id]
+        self.plan(0, None, rows=drafts + "Idea | draft | split into: [[Idea Part]] | 30. Knowledge")
+        self.plan(0, None, "--approve")
+        (self.v / "01. Inbox" / "Idea Part.md").write_text("# Idea Part\n", encoding="utf-8")
+        self.plan(3, "", "--apply", "Idea")
+        self.assert_err("USER ERROR: plan.py: split note Idea Part exists since the plan was shown")
+
     def test_changed_since_plan(self):
         idea = self.v / "01. Inbox" / "Idea.md"
         self.plan(0, None, rows="Idea | draft | actions: set topic: AI | 40. Projects\n"

@@ -17,6 +17,8 @@ rows (stdin), one per line "note | state | change | destination", or a JSON list
   change        exactly one of:
                   new links: [[A]], [[B]]       links to add (body, and related for a draft)
                   merge with: <target>[, ...]   the first target is merged into
+                  split into: [[A]], [[B]]      new drafts in 01. Inbox for the other topics
+                                                (draft rows only; names no note has yet)
                   actions: formatter            frontmatter to the schema, tidy structure
                   actions: new type: <type>     only for a type missing from the allowed list
                   actions: fill section: <heading> | fix link: [[X]] | add alias: <name>
@@ -38,7 +40,8 @@ output (stdout):
               apply: <path> | <destination> per note, in the order to process them
   --apply     the frontmatter.py line (frontmatter: or unchanged:) when a row changes the
               frontmatter; edit: <path> | <change> per row the model does with Edit, then
-              finish with --finish; without edit: lines it finishes the note itself
+              finish with --finish; without edit: lines it finishes the note itself;
+              new: <path> per split note the model creates (it does not exist yet)
   --finish    the promote.py or merge.py output, or kept: <path> | <reason>
   ERROR: <message>   vault problem (path missing, no CLAUDE.md), exit 0
 
@@ -72,7 +75,8 @@ from promote import INBOX, Fail, rel_path, portable_key  # noqa: E402
 ADD_KEYS = {"tag": "tags", "tags": "tags", "alias": "aliases", "aliases": "aliases", "related": "related"}
 LINKS = re.compile(r"\[\[[^\]\r\n]+\]\](?:[ \t]*,[ \t]*\[\[[^\]\r\n]+\]\])*")
 TARGET = re.compile(r"\[\[([^\]|#\r\n]+)[^\]\r\n]*\]\]")
-BODY = ("formatter", "links", "body")  # kinds the model finishes with Edit
+BODY = ("formatter", "links", "body", "split")  # kinds the model finishes with Edit
+BAD_NAME = re.compile(r'[\\/:*?"<>|#^\[\]]|^\.|[. ]$')  # not a safe, linkable note name
 EXISTING = ("orphan", "linked")  # rows on a note that stays where it is
 
 
@@ -100,15 +104,19 @@ def parse_change(text, allowed=None):
     head, sep, rest = text.partition(":")
     rest = rest.strip(" \t")
     if not sep or not rest:
-        raise ValueError("change must be new links:, merge with:, actions: or none")
+        raise ValueError("change must be new links:, merge with:, split into:, actions: or none")
     if head == "new links":
         if not LINKS.fullmatch(rest):
             raise ValueError("new links: takes [[Note]] links, comma separated")
         return "links", TARGET.findall(rest)
+    if head == "split into":
+        if not LINKS.fullmatch(rest):
+            raise ValueError("split into: takes [[Note]] links for the new notes, comma separated")
+        return "split", [t.strip() for t in TARGET.findall(rest)]
     if head == "merge with":
         return "merge", [n.strip(" \t[]").removesuffix(".md") for n in rest.split(",") if n.strip(" \t[]")]
     if head != "actions":
-        raise ValueError("change must be new links:, merge with:, actions: or none")
+        raise ValueError("change must be new links:, merge with:, split into:, actions: or none")
     if rest == "formatter":
         return "formatter", None
     action, sep, value = rest.partition(":")
@@ -246,7 +254,7 @@ def validate(vault, ctx, rows, cover=True):
                     problem(row, "a linked row only adds new links: to a mentioned-in note of select.py")
                     continue
                 row["dest"] = f"keep, links only in {folder_of(path)}"
-            elif row["kind"] in ("merge", "none", "newtype"):
+            elif row["kind"] in ("merge", "none", "newtype", "split"):
                 problem(row, "an orphan row only adds links or changes a property")
                 continue
             else:
@@ -267,6 +275,12 @@ def validate(vault, ctx, rows, cover=True):
             if reason:
                 problem(row, reason)
                 continue
+        if row["kind"] == "split":
+            for name in row["data"]:
+                if BAD_NAME.search(name):
+                    problem(row, f"split note name not usable as a filename or link: {name}")
+                elif ctx["by_stem"].get(name.casefold()):
+                    problem(row, f"a note named {name} exists already, merge into it or pick another name")
         if row["kind"] == "merge":
             for target in row["data"]:
                 hits = [h for h in ctx["by_stem"].get(target.casefold(), []) if h != path]
@@ -425,8 +439,20 @@ def apply(vault, run, ctx, note):
     ledger.record(run, "hash", path, ledger.file_hash(vault / path))
     ledger.record(run, "applied", path)
     edits = [r for r in rows if parse_change(r["change"])[0] in BODY]
+    new = []
+    for r in edits:
+        kind, data = parse_change(r["change"])
+        if kind == "split":
+            for name in data:
+                rel = f"{INBOX}/{name}.md"
+                if (vault / rel).exists() or ctx["by_stem"].get(name.casefold()):
+                    raise user_error(f"split note {name} exists since the plan was shown, nothing written; "
+                                     "build a new plan")
+                new.append(rel)
     for r in edits:
         print(f"edit: {path} | {r['change']}")
+    for rel in new:
+        print(f"new: {rel}")
     if edits:
         ledger.record(run, "changed", path)  # the model edits it next
         return 0
