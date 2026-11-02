@@ -1,6 +1,6 @@
 # wiki-save
 
-Keeps a useful answer from a Claude conversation before it gets lost in the chat history. It saves the answer as a new `draft` note in `01. Inbox`, with the frontmatter your vault `CLAUDE.md` asks for, so you can file it later with `wiki-ingest`. It never changes another note and never overwrites a file.
+Keeps a useful answer from a Claude conversation before it gets lost in the chat history. It saves the answer as a new `draft` note in `01. Inbox`, with the frontmatter your vault `CLAUDE.md` asks for, so you can file it later with `wiki-ingest`. Save never changes another note and never overwrites a file; edit changes only the note you name and sends it back to `01. Inbox` as a `draft`.
 
 ## Skills
 
@@ -10,6 +10,13 @@ Saves the last useful answer or insight of the conversation as a standalone note
 
 - `/wiki-save:save` (Claude picks a title)
 - `/wiki-save:save Dolphin sleep patterns`
+
+### `/wiki-save:edit <note> <change>`
+
+Changes one existing note the way you describe, sets its `status` to `draft` whatever it was, and moves it to `01. Inbox` from wherever it is (also `99. Archived`). A note directly in `01. Inbox` is edited in place. The filename never changes, so `[[Name]]` links keep working; notes that link the old location by path are listed. Claude edits a temp copy, never the note itself, and changes only what you asked.
+
+- `/wiki-save:edit Docker Basics add a section on volumes`
+- `/wiki-save:edit "[[Seals]]": fix the typo in the first paragraph`
 
 ## Vault
 
@@ -99,6 +106,34 @@ Writes the note that Claude prepared in the draft file.
   * Target is not a single draft directly in `01. Inbox`: stop with a user error
   * The full new text goes to a temp file that replaces the note in one step, only when the note did not change since it was read (otherwise a system error, nothing written)
 * Delete the draft file and print the saved path and whether the name was changed
+
+### edit.py (edit)
+
+Edits one note in two steps, so Claude only ever changes a temp copy. Imports its helpers (`key`, `note_files`, the secret scan, the link check, the temp file writer) from the save scripts of this plugin; `with_status` is copied from wiki-ingest.
+
+* Check the arguments: `prepare <note>` or `publish [--allow-secrets] <note> <draft-file> <sha>`
+  * Anything else: stop with a usage error
+* Get the vault from `vault.py`
+  * Vault problem, or no `01. Inbox` folder: print the `ERROR:` line and stop, nothing changed
+* Find the note by path, `[[link]]` or name (case-insensitive, Unicode-normalized), then by alias when no filename matches
+  * Path leaves the vault or enters a dot folder: stop with a usage error
+  * Skips dot folders and `90. Templates`
+  * None: print a `suggest:` line for a close name and stop with a user error
+  * Several: print `match: <path> (status: <status>)` per note and stop with a user error
+* The note is not directly in `01. Inbox` and `01. Inbox` already holds a note with that filename: print `exists:` and stop with a user error
+* `prepare`: copy the note byte for byte to a temp draft file outside the vault and print its path, the target and a sha of the note
+* `publish`: check and write the edited draft
+  * The note changed since `prepare` (sha differs): stop with a user error, nothing written
+  * Secrets in the draft (same scan as save.py): print `secret:` lines and stop with a user error; `--allow-secrets` skips the scan
+  * Opening `---` without a closing one (also checked on the note in `prepare`): stop with a usage error
+  * The draft lost the frontmatter the note had, or has no body text: stop with a usage error, so an edit never empties a note
+  * No frontmatter: add one with only `status: draft`; else set `status: draft` and an existing `updated:` to today (never added)
+  * A `[[link]]` to a missing note that the original did not have: print `suggest:` lines and stop with a usage error; old dead links pass
+  * Line endings and odd bytes are kept
+  * Directly in `01. Inbox`: replace the note in one step, only when it did not change meanwhile
+  * Elsewhere: publish `01. Inbox/<filename>` with a hard link (never overwrites; exclusive create without hard links), then remove the old file to complete the move, only when it did not change meanwhile (otherwise a system error, both files kept)
+  * Delete the draft file and print the edited path, the old path and the old status
+  * Moved: print `path-link: <note>` for each note that links the old location by path (report only)
 
 ## Tests
 

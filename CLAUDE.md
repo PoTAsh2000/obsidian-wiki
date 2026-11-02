@@ -10,11 +10,11 @@ This file is only loaded while developing inside this repo, never while a skill 
 ## No overlap between skills
 
 - `wiki-query` never writes.
-- `wiki-save` only creates `draft` notes in `01. Inbox`.
+- `wiki-save:save` only creates `draft` notes in `01. Inbox`. `wiki-save:edit` only changes the one note the user names, as the user asked, sets it to `draft` and moves it into `01. Inbox`.
 - `wiki-lint` only moves stray drafts into `01. Inbox` and unlinks dead links. Everything else it reports.
 - `wiki-ingest:ingest` only moves drafts out of `01. Inbox` and sets `review`.
 - `wiki-ingest:apply` only sets `evergreen`.
-- Only ingest and apply change `status`.
+- Only ingest, apply and wiki-save:edit change `status`; edit only ever sets `draft`.
 - Only `wiki-vault` writes `~/.claude/obsidian-wiki/vault-path`, and it never touches the vault.
 - No skill deletes a note.
 - `python3 tests/check_rules.py` checks the machine-checkable parts of these rules: no script outside `wiki-vault` deletes a file (see the `allow-delete` rule under Scripts), `wiki-query` scripts never write, and `wiki-query` skills never allow `Write` or `Edit`. Who sets which `status` stays a rule to read.
