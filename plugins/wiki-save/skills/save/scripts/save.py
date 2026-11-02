@@ -418,27 +418,47 @@ def write_temp(folder, data):
     return tmp
 
 
+def publish_file(path, data):
+    """Create path holding data in one step: a complete temp file hard-linked to the name,
+    which fails when the name exists. Without hard links: exclusive create, partial file
+    removed. Raises FileExistsError when the name exists, OSError on other failures."""
+    tmp = write_temp(path.parent, data)
+    try:
+        os.link(tmp, path)
+    except FileExistsError:
+        raise
+    except OSError:  # no hard links on this file system
+        with open(path, "xb") as out:
+            try:
+                write_full(out, data)
+            except BaseException:
+                out.close()
+                path.unlink()  # allow-delete: partial note this run just created
+                raise
+    finally:
+        os.unlink(tmp)  # allow-delete: own temp file, already hard-linked or unused
+
+
+def replace_if_unchanged(path, before, data):
+    """Replace path with data in one step, only when it still holds the bytes before.
+    Returns False (nothing written) when it changed. Raises OSError."""
+    tmp = write_temp(path.parent, data)
+    try:
+        if path.read_bytes() != before:
+            return False
+        os.replace(tmp, path)
+        return True
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)  # allow-delete: own temp file left after a failed replace
+
+
 def create_note(vault, name, fm, body):
-    """Publish a new note in one step: a complete temp file hard-linked to the name, which
-    fails when the name exists. Without hard links: exclusive create, partial file removed."""
+    """Publish a new note in one step with publish_file, never replacing a file."""
     target = f"{INBOX}/{name}.md"
     path, data = vault / target, f"{fm}\n# {name}\n\n{body}\n".encode("utf-8")
     try:
-        tmp = write_temp(path.parent, data)
-        try:
-            os.link(tmp, path)
-        except FileExistsError:
-            raise
-        except OSError:  # no hard links on this file system
-            with open(path, "xb") as out:
-                try:
-                    write_full(out, data)
-                except BaseException:
-                    out.close()
-                    path.unlink()  # allow-delete: partial note this run just created
-                    raise
-        finally:
-            os.unlink(tmp)  # allow-delete: own temp file, already hard-linked or unused
+        publish_file(path, data)
     except FileExistsError:
         raise Fail(3, f'USER ERROR: save.py: a note named "{name}" was created meanwhile: '
                       f"{target}")
@@ -456,15 +476,9 @@ def append_note(vault, existing, body):
         eol = "\r\n" if b"\r\n" in data else "\n"  # keep CRLF notes CRLF
         text = "" if not data or data.endswith(b"\n") else "\n"
         text += f"\n## {date.today().isoformat()}\n\n{body}\n"
-        tmp = write_temp(path.parent, data + text.replace("\n", eol).encode("utf-8"))
-        try:
-            if path.read_bytes() != data:
-                raise Fail(1, f"SYSTEM ERROR: save.py: {existing} changed while appending, "
-                              "nothing written; rerun")
-            os.replace(tmp, path)
-        finally:
-            if os.path.exists(tmp):
-                os.unlink(tmp)  # allow-delete: own temp file left after a failed replace
+        if not replace_if_unchanged(path, data, data + text.replace("\n", eol).encode("utf-8")):
+            raise Fail(1, f"SYSTEM ERROR: save.py: {existing} changed while appending, "
+                          "nothing written; rerun")
     except OSError:
         raise Fail(1, f"SYSTEM ERROR: save.py: could not append to {existing}")
 

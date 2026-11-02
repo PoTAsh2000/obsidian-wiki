@@ -1,6 +1,6 @@
 ---
 name: save
-description: Save a useful answer or insight from the current conversation as a new draft note in the user's Obsidian vault Inbox. Use when the user says "save this to my vault", "save this to Obsidian", "put this in my notes" or "add this to my wiki". Do not use for general save requests about code, files, commits, settings or memory that do not mention the vault, Obsidian or notes.
+description: Save a useful answer or insight from the current conversation as a new draft note in the user's Obsidian vault Inbox. Use when the user says "save this to my vault", "save this to Obsidian", "put this in my notes" or "add this to my wiki". Do not use for general save requests about code, files, commits, settings or memory that do not mention the vault, Obsidian or notes, or for changing an existing note (use wiki-save:edit).
 argument-hint: "[title]"
 allowed-tools: Bash(python3:*), Write, Edit, Read
 ---

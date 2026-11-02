@@ -58,6 +58,7 @@ Auto-update is off by default for third-party marketplaces. Turn it on once: `/p
 | `/wiki-vault:delete` | Remove the configured vault folder |
 | `/wiki-save:save` | Save the last useful answer as a `draft` in `01. Inbox` (Claude proposes a title) |
 | `/wiki-save:save Dolphin sleep patterns` | Same, with a given title |
+| `/wiki-save:edit Docker Basics add a volumes section` | Edit a note, set it to `draft` and move it to `01. Inbox` |
 | `/wiki-ingest:ingest` | List all `draft` notes, ask which one, then plan moving it out of the Inbox |
 | `/wiki-ingest:ingest all` | Plan every `draft` note |
 | `/wiki-ingest:apply` | Mark every `review` note as `evergreen` (only runs when typed) |
