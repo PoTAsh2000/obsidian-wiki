@@ -46,7 +46,7 @@ broken-or-risky (22):
 30. Knowledge/Fragments.md:12  broken-fragment  ![[image.png#x]] fragment on non-note target
 30. Knowledge/Fragments.md:17  broken-fragment  [[#Code Heading]] heading not found
 
-rule-violations (25):
+rule-violations (24):
 01. Inbox/No Frontmatter.md:1  frontmatter-missing  no frontmatter
 30. Knowledge/Atomic Rules.md:1  frontmatter-missing  no source (required for type how-to)
 30. Knowledge/Code Links.md:1  frontmatter-missing  no source (required for type how-to)
@@ -71,7 +71,6 @@ rule-violations (25):
 30. Knowledge/Empty Sections.md:26  empty-section  ## Last
 30. Knowledge/Only Title.md:6  empty-section  # Only Title
 30. Knowledge/Long Note.md:1  long-note  1603 words, more than 1500: split it into atomic notes
-30. Knowledge/Atomic Rules.md:7  related-unlinked  [[Valid Links]] is in related but not linked in the body
 
 housekeeping (13):
 01. Inbox/Old Idea.md:4  inbox-age  created 2020-01-01, older than 7 days

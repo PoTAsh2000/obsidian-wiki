@@ -4,7 +4,7 @@
     "linksScanned": 109,
     "changed": {"movedToInbox": 2, "removedDeadLinks": 18},
     "broken-or-risky": {"ambiguous-link": 2, "likely-typo": 1, "missing-attachment": 3, "invalid-encoding": 1, "duplicate-name": 7, "status-location": 2, "broken-fragment": 6},
-    "rule-violations": {"frontmatter-missing": 5, "frontmatter-invalid": 10, "empty-note": 2, "empty-section": 6, "long-note": 1, "related-unlinked": 1},
+    "rule-violations": {"frontmatter-missing": 5, "frontmatter-invalid": 10, "empty-note": 2, "empty-section": 6, "long-note": 1},
     "housekeeping": {"inbox-age": 1, "archived-link": 2, "unused-attachment": 1, "orphans": 9},
     "info": {"placeholderLinks": 2, "allowlistedLinks": 4}
   },
@@ -78,7 +78,6 @@
     {"category": "duplicate-name", "path": "40. Projects/Same Name.md", "line": 1, "detail": "same name as 30. Knowledge/Same Name.md"},
     {"category": "frontmatter-missing", "path": "01. Inbox/No Frontmatter.md", "line": 1, "detail": "no frontmatter"},
     {"category": "frontmatter-missing", "path": "30. Knowledge/Atomic Rules.md", "line": 1, "detail": "no source (required for type how-to)"},
-    {"category": "related-unlinked", "path": "30. Knowledge/Atomic Rules.md", "line": 7, "detail": "[[Valid Links]] is in related but not linked in the body"},
     {"category": "frontmatter-invalid", "path": "30. Knowledge/BOM Note.md", "line": 1, "detail": "starts with a byte order mark"},
     {"category": "frontmatter-invalid", "path": "30. Knowledge/BOM Note.md", "line": 4, "detail": "created '2026/09/01' is not YYYY-MM-DD"},
     {"category": "frontmatter-invalid", "path": "30. Knowledge/Bad Date.md", "line": 4, "detail": "created '2026-02-30' is not a real date"},

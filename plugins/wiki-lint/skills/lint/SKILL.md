@@ -1,6 +1,6 @@
 ---
 name: lint
-description: Check the user's Obsidian vault for broken links, stray drafts, bad frontmatter, empty sections, notes too long to be atomic, related links missing from the body, duplicate names, old Inbox notes and orphans, and fix stray drafts and dead links. Use when the user says "check my vault", "lint my vault", "find broken links in my notes" or "is my Obsidian vault tidy?", and when another wiki skill invokes wiki-lint:lint. Do not use for linting code, checking a repository or questions that do not mention the vault, Obsidian or notes.
+description: Check the user's Obsidian vault for broken links, stray drafts, bad frontmatter, empty sections, notes too long to be atomic, duplicate names, old Inbox notes and orphans, and fix stray drafts and dead links. Use when the user says "check my vault", "lint my vault", "find broken links in my notes" or "is my Obsidian vault tidy?", and when another wiki skill invokes wiki-lint:lint. Do not use for linting code, checking a repository or questions that do not mention the vault, Obsidian or notes.
 argument-hint: "[--files <path>...] [--dry-run] [--all] [--as-of YYYY-MM-DD]"
 allowed-tools: Bash(python3:*)
 ---
