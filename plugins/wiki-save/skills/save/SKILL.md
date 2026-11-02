@@ -31,7 +31,7 @@ Per note: English, no em dashes. Keep URLs, citations, versions and quotes only 
 Write tool on `draft_file` (a temp file, not in the vault):
 
 - Frontmatter: every property the vault `CLAUDE.md` requires, in its order. `status: draft`, dates `today`, `type` only from the allowed values (none fits: `knowledge`, and say so), `topic` from `topics` when one fits, sources like `claude session <today>`.
-- `related`: run `python3 "${CLAUDE_SKILL_DIR}/scripts/gather.py" --related '<keyword>' ...` once with a few keywords. Keep only `related:` candidates that really relate, never edit them; `[]` only when none fits (ingest fills it later); link one in the body only where the running text names it. One clearly holds the same insight: say so in one line and offer to skip or save anyway, without more searches.
+- `related`: run `python3 "${CLAUDE_SKILL_DIR}/scripts/gather.py" --related '<keyword>' ...` once with a few keywords. Keep only `related:` candidates that really relate, never edit them; `[]` only when none fits (ingest fills it later); link one in the body only where the running text names it or clearly refers to it. One clearly holds the same insight: say so in one line and offer to skip or save anyway, without more searches.
 - Then `# <Title>` and the body. `save.py` takes the title from this heading.
 - Body: right below the heading a summary of two or three sentences with the core of the note, then `##` sections that each make sense on their own. Never add a section that only lists links (`## Related`, `## See also`): `related` holds them.
 

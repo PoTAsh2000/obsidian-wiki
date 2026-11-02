@@ -40,7 +40,7 @@ WIKI_EDIT_EOF
 
 Read `draft_file`, then apply the change with Edit on `draft_file` only (a temp copy, not in the vault). Change only what `request` asks; the `# ` heading may change. Do not touch `status` or `updated`, `edit.py` sets them. English, no em dashes. Follow the vault rules for content. Add no URLs or facts that are not in the request or the conversation.
 
-Atomic notes (vault `CLAUDE.md`): when the request adds a topic that does not belong to this note's one topic, do not add it here; say so and offer `/wiki-save:save` for it as its own note, then edit the rest. When the note grows past about 1500 words or already covers several topics, edit as asked and say in step 5 that `/wiki-ingest:ingest` can propose a split. Keep the summary below the `# ` heading true to the changed note, add every newly related note to `related`, and link it in the body only where the running text names it; never add a section that only lists links.
+Atomic notes (vault `CLAUDE.md`): when the request adds a topic that does not belong to this note's one topic, do not add it here; say so and offer `/wiki-save:save` for it as its own note, then edit the rest. When the note grows past about 1500 words or already covers several topics, edit as asked and say in step 5 that `/wiki-ingest:ingest` can propose a split. Keep the summary below the `# ` heading true to the changed note, add every newly related note to `related`, and link it in the body only where the running text names it or clearly refers to it; never add a section that only lists links.
 
 ## 4. Publish
 
