@@ -40,6 +40,8 @@ WIKI_EDIT_EOF
 
 Read `draft_file`, then apply the change with Edit on `draft_file` only (a temp copy, not in the vault). Change only what `request` asks; the `# ` heading may change. Do not touch `status` or `updated`, `edit.py` sets them. English, no em dashes. Follow the vault rules for content. Add no URLs or facts that are not in the request or the conversation.
 
+Atomic notes (vault `CLAUDE.md`): when the request adds a topic that does not belong to this note's one topic, do not add it here; say so and offer `/wiki-save:save` for it as its own note, then edit the rest. When the note grows past about 1500 words or already covers several topics, edit as asked and say in step 5 that `/wiki-ingest:ingest` can propose a split. Keep the summary below the `# ` heading true to the changed note, and link every new `related` note in the body with a reason.
+
 ## 4. Publish
 
 Quoting: put every publish argument in single quotes and write each `'` inside it as `'\''`, so any name works (`Tom's Cafe` becomes `'Tom'\''s Cafe'`).
@@ -64,4 +66,4 @@ On every failed publish, tell the user the edited draft is kept at `draft_file` 
 
 ## 5. Report
 
-Relay the first output line as is. `path-link:` lines: name those notes and say their path links to the old location may be dead now. Mention `/wiki-ingest:ingest`.
+Relay the first output line as is. Mention a split when step 3 found the note too long or covering several topics. `path-link:` lines: name those notes and say their path links to the old location may be dead now. Mention `/wiki-ingest:ingest`.
