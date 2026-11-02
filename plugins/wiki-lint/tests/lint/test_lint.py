@@ -225,6 +225,22 @@ class LintTest(unittest.TestCase):
         self.expect(r, 0)
         self.assertIn("[[Café Notes]] and [[STRASSE]]", (k / "Uni Links.md").read_text(encoding="utf-8"))
 
+    # 9e2. A key the schema marks "required for type" is missing when absent or an empty list
+    def test_required_related(self):
+        rules = self.vault / "CLAUDE.md"
+        rules.write_text(rules.read_text(encoding="utf-8").replace(
+            "```yaml\n", "```yaml\nrelated: []   # required for type project, how-to\n", 1), encoding="utf-8")
+        p = self.vault / "40. Projects"
+        for name, related in (("Empty Related", "related: []\n"), ("No Related", ""),
+                              ("Has Related", 'related: ["[[Target Note]]"]\n')):
+            (p / f"{name}.md").write_text(f"---\ntype: project\nstatus: review\ncreated: 2026-09-01\n{related}---\n"
+                                          f"# {name}\n\nText.\n", encoding="utf-8")
+        r = self.lint("--dry-run", "--files", "40. Projects/")
+        got = {(f["path"], f["detail"]) for f in json.loads(r.stdout)["findings"]}
+        for name in ("Empty Related", "No Related"):
+            self.assertIn((f"40. Projects/{name}.md", "no related (required for type project)"), got)
+        self.assertNotIn(("40. Projects/Has Related.md", "no related (required for type project)"), got)
+
     # 9f. Frontmatter structure: BOM, unclosed block and duplicate key each get their own detail
     def test_frontmatter_structure(self):
         out = json.loads(self.lint("--dry-run", *AS_OF).stdout)

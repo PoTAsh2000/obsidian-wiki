@@ -70,8 +70,8 @@ Lives at `skills/lint/scripts/lint.py`.
   * Note whose body has only blank lines, headings, HTML comments or block ids: report `empty-note` on line 1
   * A byte order mark before the frontmatter, a frontmatter block that is not closed and a duplicate key each get their own detail; with a byte order mark the other frontmatter checks still run
   * `archived` status outside `99. Archived`: report it
-  * A key the vault `CLAUDE.md` frontmatter schema marks `# ... required for type <type>` (for example `source: https://...   # required for type knowledge`): report it as `frontmatter-missing` on notes of that type
-  * Atomic notes: a body over 1500 words reports `long-note` (`dashboard` and `moc` notes are exempt); a `related` link to an existing note that the body never links (an alias counts) reports `related-unlinked` on its line
+  * A key the vault `CLAUDE.md` frontmatter schema marks `# ... required for type <type>` (for example `source: https://...   # required for type knowledge`): report it as `frontmatter-missing` on notes of that type; an empty list counts as missing, so `related: []   # required for type project` reports a project without related notes
+  * Atomic notes: a body over 1500 words reports `long-note` (`dashboard` and `moc` notes are exempt)
   * Full vault only: report Inbox notes older than 7 days
 * Full vault only: report duplicate names or aliases, and orphans without incoming links
 * Full vault only: report files in the attachment folder that nothing links to or embeds (`unused-attachment`, with the size); a `.canvas`, `.base` or ignored note that names the file counts as a use, and `Lint ignore` paths are skipped. Lint never deletes them

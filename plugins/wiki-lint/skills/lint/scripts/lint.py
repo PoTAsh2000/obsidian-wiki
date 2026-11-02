@@ -98,7 +98,7 @@ GROUPS = (
                          "duplicate-name", "unsafe-name",
                          "status-location", "broken-fragment", "skipped-changed")),
     ("rule-violations", ("frontmatter-missing", "frontmatter-invalid", "empty-note", "empty-section",
-                         "long-note", "related-unlinked")),
+                         "long-note")),
     ("housekeeping", ("inbox-age", "archived-link", "unused-attachment", "orphans")),
     ("info", ("placeholderLinks", "allowlistedLinks")),
 )
@@ -905,26 +905,12 @@ class Lint:
                 self.finding("frontmatter-missing", fp, 1, f"no {key} (required for type {values['type']})")
 
     def check_atomic(self, note):
-        """Atomic-note rules: a note over MAX_WORDS body words, and related links without a body link."""
-        fp = note.final
-        body = list(note.body())
-        if note.values.get("type", "") not in NO_LENGTH_TYPES:
-            words = sum(len(c.split()) for _, c, _ in body)
-            if words > MAX_WORDS:
-                self.finding("long-note", fp, 1, f"{words} words, more than {MAX_WORDS}: split it into atomic notes")
-        # Compared as resolved paths, so an alias counts; a dead related link is reported as dead only.
-        linked = set()
-        for _, c, code in body:
-            if not code:
-                for m in re.finditer(r"!?\[\[([^\]|]*)", mask_code(c)):
-                    linked.update(self.resolve(m.group(1).strip().rstrip("\\"), "", False)[1])
-        for value, k in note.items.get("related", []):
-            m = re.fullmatch(r"\[\[([^\]|]*)[^\]]*\]\]", value)
-            if not m:
-                continue
-            state, hits = self.resolve(m.group(1).strip(), "", False)
-            if state == "ok" and hits[0] not in linked:
-                self.finding("related-unlinked", fp, k, f"{value} is in related but not linked in the body")
+        """Atomic-note rule: a note over MAX_WORDS body words."""
+        if note.values.get("type", "") in NO_LENGTH_TYPES:
+            return
+        words = sum(len(c.split()) for _, c, _ in note.body())
+        if words > MAX_WORDS:
+            self.finding("long-note", note.final, 1, f"{words} words, more than {MAX_WORDS}: split it into atomic notes")
 
     def created(self, note):
         """(created as text, None) when it is a real date not after --as-of, else (None, problem)."""
