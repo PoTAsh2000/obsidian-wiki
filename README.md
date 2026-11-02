@@ -107,6 +107,10 @@ python3 -m unittest discover -s plugins/wiki-lint/tests -t plugins/wiki-lint   #
 
 `check_rules.py` checks that every script runs on Python 3.10 with the standard library only, opens text files with `encoding="utf-8"`, that no script outside `wiki-vault` deletes a file, and that every `SKILL.md` is well formed. It is quiet when everything passes.
 
+## License
+
+Released under the [MIT License](LICENSE).
+
 ## Contribution
 
 This repo was originally created for my personal use. If you find a bug or want to see a feature, feel free to [open an issue](https://github.com/PoTAsh2000/obsidian-wiki/issues/new/choose) using the bug or feature template. A change will probably only be accepted if it still matches my own use case.
