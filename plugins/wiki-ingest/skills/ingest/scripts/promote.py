@@ -42,6 +42,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 import unicodedata
 from pathlib import Path
 
@@ -136,6 +137,23 @@ def with_status(text, status):
     return "".join(line + "\n" for line in out)
 
 
+# Waits between tries of os.replace: Windows refuses it while another process holds
+# the note open. A sync client (OneDrive) often does so right after the move to the
+# destination folder, for up to a few seconds.
+RETRY_WAITS = (0.1, 0.2, 0.5, 1.0, 2.0)
+
+
+def replace_retry(tmp, path):
+    for wait in (*RETRY_WAITS, None):
+        try:
+            os.replace(tmp, path)
+            return
+        except PermissionError:
+            if wait is None:
+                raise
+            time.sleep(wait)
+
+
 def set_status(vault, rel, status):
     """Rewrite the status line of a note through a temp file next to it."""
     path = vault / rel
@@ -143,17 +161,21 @@ def set_status(vault, rel, status):
     text = with_status(before, status)
     if text is None:
         raise user_error(f"{rel} has no frontmatter, add one before promoting")
+    tmp = None
     try:
         fd, tmp = tempfile.mkstemp(prefix=path.name + ".", dir=path.parent)
         with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape", newline="") as f:
             f.write(text)
         if read_text(path) != before:  # an autosave or a sync in between: never overwrite it
-            os.unlink(tmp)  # allow-delete: own temp file, the note changed meanwhile
             raise user_error(f"{rel} changed while ingest was writing it (Obsidian or a sync tool), "
                              "status not set; re-read it and run the step again")
-        os.replace(tmp, path)
+        replace_retry(tmp, path)
+        tmp = None
     except OSError as err:
         raise sys_error(f"cannot write {rel}: {err}")
+    finally:
+        if tmp:
+            Path(tmp).unlink(missing_ok=True)  # allow-delete: own temp file after a failed atomic write
 
 
 def report(vault, rel):
