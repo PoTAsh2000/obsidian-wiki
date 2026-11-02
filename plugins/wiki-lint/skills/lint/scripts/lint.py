@@ -86,6 +86,10 @@ TAG_RE = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 ATTACHMENT_RE = re.compile(r"\.(?!(?:md|canvas|base)$)[a-z][a-z0-9]{0,4}$", re.I)
 TEXT_CAP = 25  # text report lines per category; --all lifts it
 TYPO_CUTOFF = 0.9  # difflib ratio: [[Contex Engineering]] vs Context Engineering is 0.97
+# Atomic-note rule of the vault CLAUDE.md: about 3 A4 pages, hubs and dashboards exempt.
+# ponytail: fixed values, read them from the vault CLAUDE.md if another vault needs other ones
+MAX_WORDS = 1500
+NO_LENGTH_TYPES = ("dashboard", "moc")
 
 # Impact groups in report order; findings are sorted by group, then path and line.
 GROUPS = (
@@ -93,7 +97,8 @@ GROUPS = (
     ("broken-or-risky", ("ambiguous-link", "likely-typo", "missing-attachment", "invalid-encoding",
                          "duplicate-name", "unsafe-name",
                          "status-location", "broken-fragment", "skipped-changed")),
-    ("rule-violations", ("frontmatter-missing", "frontmatter-invalid", "empty-note", "empty-section")),
+    ("rule-violations", ("frontmatter-missing", "frontmatter-invalid", "empty-note", "empty-section",
+                         "long-note", "related-unlinked")),
     ("housekeeping", ("inbox-age", "archived-link", "unused-attachment", "orphans")),
     ("info", ("placeholderLinks", "allowlistedLinks")),
 )
@@ -318,9 +323,19 @@ def parse_args(argv):
     return dry, as_of, files_mode, files, text, every
 
 
+REQUIRED_FOR_RE = re.compile(r"([A-Za-z0-9_-]+):.*#.*\brequired for type ([A-Za-z0-9_, -]+?)(?:,? optional otherwise)?\s*$")
+
+
 def read_rules(text):
-    """Allowed type and status values, then the Lint ignore link and path patterns."""
-    types = []
+    """Allowed type and status values, the Lint ignore link and path patterns, and the
+    keys the frontmatter schema marks "# ... required for type <type>[, <type>]"."""
+    types, required = [], {}
+    for line in text.split("\n"):
+        m = REQUIRED_FOR_RE.match(line)
+        if m:
+            for t in re.split(r"[ ,]+", m.group(2).strip()):
+                if t:
+                    required.setdefault(t, []).append(m.group(1))
     for line in text.split("\n"):
         if "Allowed `type` values" in line:
             rest = line.split(":", 1)[1] if ":" in line else line
@@ -347,7 +362,7 @@ def read_rules(text):
         raise user_error("no 'Allowed `type` values' line in CLAUDE.md")
     if not statuses:
         raise user_error("no '- `status`' items under 'Status lifecycle' in CLAUDE.md")
-    return set(types), set(statuses), links, paths
+    return set(types), set(statuses), links, paths, required
 
 
 def list_files(vault):
@@ -546,7 +561,7 @@ class Lint:
         self.vault = vault
         self.files_mode = files_mode
         self.sel = sel
-        self.types, self.statuses, self.keep_links, skip_paths = rules
+        self.types, self.statuses, self.keep_links, skip_paths, self.required = rules
         self.attachments, ignored = obsidian_settings(vault)
         self.skip_paths = skip_paths + ignored
         self.as_of = as_of
@@ -863,6 +878,7 @@ class Lint:
         for key, first, k in note.duplicates:
             self.finding("frontmatter-invalid", fp, k, f"duplicate key {key} at lines {first} and {k}")
         self.check_frontmatter(note)
+        self.check_atomic(note)
         if not self.files_mode and top(fp) == INBOX:
             self.check_inbox_age(note)
 
@@ -884,6 +900,31 @@ class Lint:
         for tag, k in note.items.get("tags", []):
             if not TAG_RE.fullmatch(tag):
                 self.finding("frontmatter-invalid", fp, k, f"tag '{tag}' is not lowercase kebab-case")
+        for key in self.required.get(values.get("type", ""), []):
+            if not values.get(key) and not note.items.get(key):
+                self.finding("frontmatter-missing", fp, 1, f"no {key} (required for type {values['type']})")
+
+    def check_atomic(self, note):
+        """Atomic-note rules: a note over MAX_WORDS body words, and related links without a body link."""
+        fp = note.final
+        body = list(note.body())
+        if note.values.get("type", "") not in NO_LENGTH_TYPES:
+            words = sum(len(c.split()) for _, c, _ in body)
+            if words > MAX_WORDS:
+                self.finding("long-note", fp, 1, f"{words} words, more than {MAX_WORDS}: split it into atomic notes")
+        # Compared as resolved paths, so an alias counts; a dead related link is reported as dead only.
+        linked = set()
+        for _, c, code in body:
+            if not code:
+                for m in re.finditer(r"!?\[\[([^\]|]*)", mask_code(c)):
+                    linked.update(self.resolve(m.group(1).strip().rstrip("\\"), "", False)[1])
+        for value, k in note.items.get("related", []):
+            m = re.fullmatch(r"\[\[([^\]|]*)[^\]]*\]\]", value)
+            if not m:
+                continue
+            state, hits = self.resolve(m.group(1).strip(), "", False)
+            if state == "ok" and hits[0] not in linked:
+                self.finding("related-unlinked", fp, k, f"{value} is in related but not linked in the body")
 
     def created(self, note):
         """(created as text, None) when it is a real date not after --as-of, else (None, problem)."""

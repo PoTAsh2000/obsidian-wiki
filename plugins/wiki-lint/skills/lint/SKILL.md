@@ -1,6 +1,6 @@
 ---
 name: lint
-description: Check the user's Obsidian vault for broken links, stray drafts, bad frontmatter, empty sections, duplicate names, old Inbox notes and orphans, and fix stray drafts and dead links. Use when the user says "check my vault", "lint my vault", "find broken links in my notes" or "is my Obsidian vault tidy?", and when another wiki skill invokes wiki-lint:lint. Do not use for linting code, checking a repository or questions that do not mention the vault, Obsidian or notes.
+description: Check the user's Obsidian vault for broken links, stray drafts, bad frontmatter, empty sections, notes too long to be atomic, related links missing from the body, duplicate names, old Inbox notes and orphans, and fix stray drafts and dead links. Use when the user says "check my vault", "lint my vault", "find broken links in my notes" or "is my Obsidian vault tidy?", and when another wiki skill invokes wiki-lint:lint. Do not use for linting code, checking a repository or questions that do not mention the vault, Obsidian or notes.
 argument-hint: "[--files <path>...] [--dry-run] [--all] [--as-of YYYY-MM-DD]"
 allowed-tools: Bash(python3:*)
 ---
@@ -46,6 +46,6 @@ Exit codes:
 
 ## 3. Report the result
 
-Invoked by the user: the text report is a scan line, then one block per non-empty impact group (`changed`, `broken-or-risky`, `rule-violations`, `housekeeping`, `info`), one `path:line  category  detail` line per item. Show it as is in a code block; never reword, drop or reorder its paths, lines or counts. `skipped-changed` means run lint again; `likely-typo` and `missing-attachment` links were kept; a `... N more <category>` line is part of the output (`--all` or `--files` shows the rest). Then give at most three concrete next steps, for example "run `/wiki-ingest:ingest` for the old Inbox notes". Anything else is a proposal: moving a note to `99. Archived` or merging needs the user's OK in this conversation, and no note is ever deleted.
+Invoked by the user: the text report is a scan line, then one block per non-empty impact group (`changed`, `broken-or-risky`, `rule-violations`, `housekeeping`, `info`), one `path:line  category  detail` line per item. Show it as is in a code block; never reword, drop or reorder its paths, lines or counts. `skipped-changed` means run lint again; `likely-typo` and `missing-attachment` links were kept; a `... N more <category>` line is part of the output (`--all` or `--files` shows the rest). Then give at most three concrete next steps, for example "run `/wiki-ingest:ingest` for the old Inbox notes" or, for a `long-note`, "send it back to the Inbox with `/wiki-save:edit` so ingest can propose a split". Anything else is a proposal: moving a note to `99. Archived` or merging needs the user's OK in this conversation, and no note is ever deleted.
 
 Invoked by another skill (for example wiki-ingest): the script printed JSON (`summary`, `movedToInbox`, `removedDeadLinks`, `placeholderLinks`, `allowlistedLinks`, `orphans`, `findings`). Keep the summary short and give the lists it needs (`orphans`, changed paths, findings) as they are.

@@ -1,4 +1,4 @@
-lint: 44 notes, 104 links scanned (dry run, nothing changed)
+lint: 47 notes, 109 links scanned (dry run, nothing changed)
 
 changed (20):
 30. Knowledge/Stray Draft.md -> 01. Inbox/Stray Draft.md  movedToInbox
@@ -46,8 +46,10 @@ broken-or-risky (22):
 30. Knowledge/Fragments.md:12  broken-fragment  ![[image.png#x]] fragment on non-note target
 30. Knowledge/Fragments.md:17  broken-fragment  [[#Code Heading]] heading not found
 
-rule-violations (21):
+rule-violations (25):
 01. Inbox/No Frontmatter.md:1  frontmatter-missing  no frontmatter
+30. Knowledge/Atomic Rules.md:1  frontmatter-missing  no source (required for type how-to)
+30. Knowledge/Code Links.md:1  frontmatter-missing  no source (required for type how-to)
 30. Knowledge/Missing Fields.md:1  frontmatter-missing  no created
 30. Knowledge/Missing Fields.md:1  frontmatter-missing  no status
 30. Knowledge/BOM Note.md:1  frontmatter-invalid  starts with a byte order mark
@@ -68,17 +70,22 @@ rule-violations (21):
 30. Knowledge/Empty Sections.md:24  empty-section  ### Child Without Text
 30. Knowledge/Empty Sections.md:26  empty-section  ## Last
 30. Knowledge/Only Title.md:6  empty-section  # Only Title
+30. Knowledge/Long Note.md:1  long-note  1603 words, more than 1500: split it into atomic notes
+30. Knowledge/Atomic Rules.md:7  related-unlinked  [[Valid Links]] is in related but not linked in the body
 
-housekeeping (10):
+housekeeping (13):
 01. Inbox/Old Idea.md:4  inbox-age  created 2020-01-01, older than 7 days
 30. Knowledge/Archived Links.md:8  archived-link  [[99. Archived/Old Note#Old Note|the old one]] points to 99. Archived/Old Note.md; use [[Target Note]]
 30. Knowledge/Archived Links.md:8  archived-link  [[Old Note]] points to 99. Archived/Old Note.md; use [[Target Note]]
 Attachments/unused.png:1  unused-attachment  4 bytes, no note, canvas or base links to it
 01. Inbox/Draft Template.md  orphans
 30. Knowledge/Archived Links.md  orphans
+30. Knowledge/Atomic Rules.md  orphans
 30. Knowledge/Bad Date.md  orphans
 30. Knowledge/Forward Links.md  orphans
 30. Knowledge/Latin1 Note.md  orphans
+30. Knowledge/Long Dashboard.md  orphans
+30. Knowledge/Long Note.md  orphans
 30. Knowledge/Orphan.md  orphans
 
 info (6):
