@@ -1,6 +1,6 @@
 # wiki-ingest
 
-Turns the drafts in your Inbox into filed, linked notes. Claude proposes a plan per draft (frontmatter, links, destination folder or merge), and only after your OK it moves the note out of `01. Inbox` and sets `status: review`. When you have reviewed the filed notes, one command approves them as `evergreen`.
+Turns the drafts in your Inbox into filed, linked notes. Claude proposes a plan per draft (frontmatter, links, destination folder, merge, or a split into atomic notes), and only after your OK it moves the note out of `01. Inbox` and sets `status: review`. When you have reviewed the filed notes, one command approves them as `evergreen`.
 
 Installing wiki-ingest also installs `wiki-lint`, which it runs before and after filing notes.
 
@@ -79,10 +79,11 @@ Checks the plan rows Claude proposes, prints the approval table and applies only
   * No `select.py` run with this id: stop with a usage error
 * Check every row before anything is shown; a refused row is a user error with one `row <id> (<note>): <reason>` line each, nothing stored
   * State `draft` (a candidate of this run), `orphan` (an existing note, by name or path) or `linked` (a `mentioned-in:` note of this run, `new links:` only)
-  * Change: `new links:`, `merge with:`, `actions:` (`formatter`, `new type:`, `fill section:`, `fix link:`, `add alias:`, `set <key>:`, `add <tag|alias|related>:`) or `none`; never `status`
+  * Change: `new links:`, `merge with:`, `split into:`, `actions:` (`formatter`, `new type:`, `fill section:`, `fix link:`, `add alias:`, `set <key>:`, `add <tag|alias|related>:`) or `none`; never `status`
   * `new type:` only for a type missing from the allowed list, `set type:` only for an allowed one
   * Folder destination exists and is not `01. Inbox`; every row of a note has the same destination
   * Merge target exists once and is not in `01. Inbox`; no name clash in the archive folder
+  * `split into: [[A]], [[B]]` only on a draft row; each name is new (no note has it) and usable as a filename and link
   * `select.py all` or a name: every selected draft has a row
 * Rewrite destinations: a note with the same name in the folder gives `keep, name clash in <folder>`, an orphan always `keep, orphan stays in <folder>`, a linked row `keep, links only in <folder>`
 * Number the rows, store the plan in the run ledger and print the `## Changes to ingest` table
@@ -92,6 +93,7 @@ Checks the plan rows Claude proposes, prints the approval table and applies only
   * Print `skipped:` per skipped row and `apply: <path> | <destination>` per note, orphans first
 * `--apply <note>`: refuse a note that changed since the plan, then run `frontmatter.py` with exactly the approved values (`--new-type` only for a `new type:` row, `--approved` for an orphan; `new links:` of a draft also go to `related`)
   * Print `edit: <path> | <change>` per row Claude does with Edit; without such rows finish the note right away
+  * A split row also prints `new: 01. Inbox/<name>.md` per new note Claude creates as a `draft`; a split note that exists by now stops with a user error, nothing written
 * `--finish <note>`: only after `--apply`; run `promote.py` for a folder, `merge.py` for a merge row (first target, archive folder from the row), or print `kept:`
 
 ### promote.py (ingest)

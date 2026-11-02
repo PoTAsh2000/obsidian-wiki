@@ -9,7 +9,7 @@ allowed-tools: Bash(python3:*)
 
 Arguments: `$ARGUMENTS`
 
-What ingest may change: only notes with `status: draft` inside `01. Inbox` (edit them, move them out, set `status: review`), plus link rows and merges the user approved in the plan. Never delete a note, never set `evergreen`, never archive an orphan.
+What ingest may change: only notes with `status: draft` inside `01. Inbox` (edit them, move them out, set `status: review`), plus link rows, merges and splits the user approved in the plan. A split only creates new `draft` notes in `01. Inbox`. Never delete a note, never set `evergreen`, never archive an orphan.
 
 Scripts do the deterministic work; you do the judgment (plan, content edits, summary). Every script has `--help`. Exit 0 done; 1 or 2 (`SYSTEM ERROR:`): fix the call once with `--help`, else report the error line and stop; 3 (`USER ERROR:`): do not retry, handle it as the step says. A line starting with `ERROR:`: reply with the text after `ERROR: ` and stop.
 
@@ -26,7 +26,7 @@ Never ask for the vault path and never write it; only `wiki-vault` does that. Va
 Invoke the skill `wiki-lint:lint` by name with no arguments (never a lint script by path); it moves stray drafts into the Inbox. Exit 0 or 4: continue. Exit 1, 2 or 3: show the error line and stop. Show nothing of its result now; keep:
 
 - `orphans`: candidates for orphan rows (only this full run gives them).
-- `findings` for the selected drafts (`frontmatter-missing`, `empty-section`, `ambiguous-link`, ...): turn them into plan rows.
+- `findings` for the selected drafts (`frontmatter-missing`, `empty-section`, `ambiguous-link`, `long-note`, `related-unlinked`, ...): turn them into plan rows.
 - `placeholderLinks`: never touch these links.
 - `movedToInbox` and `removedDeadLinks`: keep them for the summary in step 7.
 
@@ -55,6 +55,7 @@ A draft or orphan (often a pasted web page or chat export) is material to file: 
 - **Links:** `new links: [[A]], [[B]]` for the relevant `mention:` lines and other existing notes from the index.
 - **Orphans:** for each note in lint's `orphans` list that is really related to this draft, an `orphan` row with `new links:` from the orphan to the draft (or a link from the draft to the orphan in the draft's rows). Unrelated orphans get no row.
 - **Incoming links:** for each `mentioned-in:` note where the mention really means this draft, a `linked` row with `new links:` from that note to the draft.
+- **Split:** a draft that covers more than one topic, or has a `long-note` finding, gets one `split into: [[A]], [[B]]` row that names a new note per other topic (rule 7 of the vault `CLAUDE.md`). The draft keeps its main topic and goes to its destination; the new notes start as drafts in `01. Inbox` for a next run. Names must be new: an existing note on that topic means a link or a merge instead.
 - **Destination:** the folder from the vault `CLAUDE.md` that fits (`20. Customers`, `30. Knowledge`, `40. Projects`, ...), `keep, <reason>` when none fits, or for a merge a `merge with: <target>` row with the archive folder (`99. Archived` by default) as destination. Every row of a note has the same destination; a draft with nothing to change gets one `none` row.
 
 Pass the rows, one `note | state | change | destination` line each (note = filename without `.md`, state `draft`, `orphan` or `linked`):
@@ -74,7 +75,7 @@ Wait for one reply: an OK, maybe with changes per id. Pass them, then go straigh
 python3 "${CLAUDE_SKILL_DIR}/scripts/plan.py" --run <id> --approve [--skip <id>] [--dest "<id>=<folder or keep, reason>"] [--link "<id>=[[Note]]"]
 ```
 
-Approving the table is the explicit OK for each merge row; a reply that does not approve means no change: stop. It prints `skipped:` lines (for step 7) and one `apply: <path> | <destination>` line per note, in order. Exit 3 (a note changed since the plan): tell the user and start again at step 3.
+Approving the table is the explicit OK for each merge and split row; a reply that does not approve means no change: stop. It prints `skipped:` lines (for step 7) and one `apply: <path> | <destination>` line per note, in order. Exit 3 (a note changed since the plan): tell the user and start again at step 3.
 
 ## 5. Apply, one note at a time
 
@@ -84,7 +85,7 @@ For each `apply:` line, finish the note completely before the next one, without 
 python3 "${CLAUDE_SKILL_DIR}/scripts/plan.py" --run <id> --apply "<path>"
 ```
 
-It writes the approved frontmatter rows. For each `edit: <path> | <change>` line, do it with Edit (structure for `formatter`, links, section; keep the meaning, never edit `status`), then run the same call with `--finish` instead of `--apply`; without `edit:` lines it finishes itself. Finishing moves the note with `status: review` (`path:`), keeps it (`kept:`) or merges it (`archived:` is the source's new path: add its content to the target with Edit; `skipped-ambiguous:` and `evergreen-target:` lines go under "Still to consider"). Exit 3 on a note: the ledger keeps the error; continue with the next note.
+It writes the approved frontmatter rows. For each `edit: <path> | <change>` line, do it with Edit (structure for `formatter`, links, section; keep the meaning, never edit `status`). For `split into:`, create each `new: <path>` with Write: the vault frontmatter schema with `status: draft`, `created` today, `source: split from [[<draft>]]`, a `# <name>` heading, a summary and the text of that topic moved from the draft unchanged in meaning; then replace that text in the draft with one sentence that links the new note and says why. Never drop text and never write to a `new:` path that exists. Then run the same call with `--finish` instead of `--apply`; without `edit:` lines it finishes itself. Finishing moves the note with `status: review` (`path:`), keeps it (`kept:`) or merges it (`archived:` is the source's new path: add its content to the target with Edit; `skipped-ambiguous:` and `evergreen-target:` lines go under "Still to consider"). Exit 3 on a note: the ledger keeps the error; continue with the next note.
 
 When every note is done, run the report once:
 

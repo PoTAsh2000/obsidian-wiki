@@ -12,7 +12,7 @@ This file is only loaded while developing inside this repo, never while a skill 
 - `wiki-query` never writes.
 - `wiki-save` only creates `draft` notes in `01. Inbox`.
 - `wiki-lint` only moves stray drafts into `01. Inbox` and unlinks dead links. Everything else it reports.
-- `wiki-ingest:ingest` only moves drafts out of `01. Inbox` and sets `review`.
+- `wiki-ingest:ingest` only moves drafts out of `01. Inbox` and sets `review`. An approved split row is the one case where it creates notes: new `draft` notes in `01. Inbox`.
 - `wiki-ingest:apply` only sets `evergreen`.
 - Only ingest and apply change `status`.
 - Only `wiki-vault` writes `~/.claude/obsidian-wiki/vault-path`, and it never touches the vault.
