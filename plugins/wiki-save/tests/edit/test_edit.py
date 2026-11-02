@@ -36,11 +36,11 @@ class VaultCase(unittest.TestCase):
         self.home = self.tmp / "home"
         self.cfg = self.home / ".claude" / "obsidian-wiki" / "vault-path"
 
-    def run_script(self, script, *args, want, env=None):
+    def run_script(self, script, *args, want, env=None, input=None):
         """Run a script, check its exit code, keep stdout and stderr."""
         env = dict(os.environ, HOME=str(self.home), PYTHONIOENCODING="utf-8",
                    TMPDIR=str(self.tmp), TEMP=str(self.tmp), TMP=str(self.tmp), **(env or {}))
-        proc = subprocess.run([sys.executable, str(script), *map(str, args)],
+        proc = subprocess.run([sys.executable, str(script), *map(str, args)], input=input,
                               capture_output=True, text=True, encoding="utf-8", env=env)
         self.out, self.err = proc.stdout, proc.stderr
         self.assertEqual(proc.returncode, want, f"stdout: {self.out}\nstderr: {self.err}")
@@ -63,8 +63,8 @@ class EditTest(VaultCase):
         super().setUp()
         self.use_vault()
 
-    def edit(self, *args, want):
-        return self.run_script(EDIT, *args, want=want)
+    def edit(self, *args, want, input=None):
+        return self.run_script(EDIT, *args, want=want, input=input)
 
     def prepare(self, note, want=0):
         self.edit("prepare", note, want=want)
@@ -156,6 +156,61 @@ class EditTest(VaultCase):
         self.assertEqual((info["note"], info["request"]), (DOCKER, "change it"))
         info = self.prepare("Docker:fix")
         self.assertEqual((info["note"], info["request"]), ("20. Knowledge/Docker.md", "fix"))
+
+    def test_prepare_stdin(self):
+        self.edit("prepare", "-", want=0,
+                  input="Docker Basics: don't drop the 'volumes' part\nand keep $HOME\n")
+        self.assertLine(f"note: {DOCKER}")
+        self.assertTrue(self.out.endswith("request: don't drop the 'volumes' part\nand keep $HOME\n"),
+                        self.out)
+        (self.vault / "20. Knowledge" / "Café Notes.md").write_text("Text.\n", encoding="utf-8")
+        self.edit("prepare", "-", want=0, input="CAFÉ NOTES fix é\n")
+        self.assertLine("note: 20. Knowledge/Café Notes.md")
+        self.assertTrue(self.out.endswith("request: fix é\n"), self.out)
+
+    def test_alias_longer_wins(self):
+        (self.vault / "20. Knowledge/Kubernetes.md").write_text("Text.\n", encoding="utf-8")
+        (self.vault / "20. Knowledge/K8s Net.md").write_text(
+            "---\naliases: [Kubernetes Networking]\n---\nText.\n", encoding="utf-8")
+        info = self.prepare("Kubernetes Networking fix typo")
+        self.assertEqual((info["note"], info["request"]), ("20. Knowledge/K8s Net.md", "fix typo"))
+        self.assertEqual(self.prepare("Kubernetes fix")["note"], "20. Knowledge/Kubernetes.md")
+
+    def test_shorter_hit_with_close_longer_note(self):
+        (self.vault / "20. Knowledge/Docker.md").write_text("Text.\n", encoding="utf-8")
+        before = sums(self.vault)
+        self.edit("prepare", "Docker Basic add volumes", want=3)
+        self.assertEqual(self.out.splitlines(), [
+            "match: 20. Knowledge/Docker.md (status: none)",
+            "suggest: Docker Basic -> Docker Basics", "request: add volumes"])
+        self.assertEqual(before, sums(self.vault))
+        info = self.prepare("Docker add volumes")
+        self.assertEqual((info["note"], info["request"]), ("20. Knowledge/Docker.md", "add volumes"))
+
+    def test_suggest_alias_scored(self):
+        (self.vault / "20. Knowledge/Kubernetes.md").write_text("Text.\n", encoding="utf-8")
+        (self.vault / "20. Knowledge/K8s Net.md").write_text(
+            "---\naliases: [Kubernetes Networking]\n---\nText.\n", encoding="utf-8")
+        self.edit("prepare", "Kubernetis Networkng fix it", want=3)
+        self.assertEqual(self.out.splitlines(),
+                         ["suggest: Kubernetis Networkng -> K8s Net", "request: fix it"])
+
+    def test_filename_beats_alias_same_words(self):
+        (self.vault / "20. Knowledge/Containers 101.md").write_text("Text.\n", encoding="utf-8")
+        self.assertEqual(self.prepare("Containers 101 x")["note"], "20. Knowledge/Containers 101.md")
+
+    def test_quote_apostrophe(self):
+        (self.vault / "20. Knowledge/Tom.md").write_text("Text.\n", encoding="utf-8")
+        (self.vault / "20. Knowledge/Tom's Cafe.md").write_text("Text.\n", encoding="utf-8")
+        info = self.prepare("'Tom's Cafe' add x")
+        self.assertEqual((info["note"], info["request"]), ("20. Knowledge/Tom's Cafe.md", "add x"))
+
+    def test_publish_needs_path(self):
+        info = self.prepare("Docker Basics")
+        before = sums(self.vault)
+        self.edit("publish", "Docker Basics", info["draft_file"], info["sha"], want=2)
+        self.assertIn("prepare again", self.err)
+        self.assertEqual(before, sums(self.vault))
 
     def test_prepare_quote_fallback(self):
         (self.vault / "20. Knowledge/'s-Hertogenbosch Trip.md").write_text("Trip.\n", encoding="utf-8")

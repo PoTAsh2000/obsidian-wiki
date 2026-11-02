@@ -1,6 +1,6 @@
 ---
 name: edit
-description: Edit an existing note in the user's Obsidian vault the way the user describes, then set it back to status draft and move it to 01. Inbox. Runs only when the user types /wiki-save:edit. Do not use for saving a new note (wiki-save:save), for processing or sorting Inbox drafts (wiki-ingest:ingest), for editing code or files outside the vault, or for only changing a status.
+description: Edit a named note in the user's Obsidian vault as the user describes, set it to draft and move it to 01. Inbox. Runs only when the user types /wiki-save:edit.
 argument-hint: "<note name> <how to change it>"
 disable-model-invocation: true
 allowed-tools: Bash(python3:*), Read, Edit
@@ -20,17 +20,18 @@ Changes one note the user names, sets it to `draft` and moves it to `01. Inbox` 
 
 ## 2. Find the note
 
-Quoting: put every argument you pass to `edit.py` in single quotes and write each `'` inside it as `'\''`, so any name works (`Tom's Cafe` becomes `'Tom'\''s Cafe'`).
-
-`$ARGUMENTS` empty: ask once which note and what change. Otherwise pass `$ARGUMENTS` unchanged as one argument (quoting rule above); `edit.py` takes the longest leading part that names a note (path, `[[link]]`, filename or alias) and prints the rest as `request:`.
+`$ARGUMENTS` empty: ask once which note and what change. A line of it that is exactly `WIKI_EDIT_EOF`: ask the user to rephrase. Otherwise pass it unchanged through the heredoc (never quote or escape it); `edit.py` takes the longest leading part that names a note (path, `[[link]]`, filename or alias) and prints the rest as `request:`.
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/scripts/edit.py" prepare '<$ARGUMENTS>'
+python3 "${CLAUDE_SKILL_DIR}/scripts/edit.py" prepare - <<'WIKI_EDIT_EOF'
+$ARGUMENTS
+WIKI_EDIT_EOF
 ```
 
 - Exit 0: an `ERROR:` line, relay it and stop. Otherwise keep `note`, `status`, `draft_file`, `sha` and `request` (everything after `request: `, maybe several lines). Empty `request`: ask once what to change. A rename is asked: say edit keeps the filename, then go on with the rest.
-- Exit 3, `match:` lines: ask which one, rerun with `'<path> <request>'`.
-- Exit 3, `suggest:` line: offer that note; once the user agrees, rerun with `'<suggested name> <request>'`.
+- Exit 3, a `match:` line and a `suggest:` line: the text may name either note; ask which one (show the `request`), then rerun the heredoc with the chosen path or name as the first line and the `request` lines below.
+- Exit 3, only `match:` lines: ask which one, then rerun the heredoc with the chosen path as the first line and the `request` lines below.
+- Exit 3, only a `suggest:` line: offer that note and show the `request`; once the user agrees, rerun the heredoc with the suggested name as the first line and the `request` lines below (with the user's correction, if any).
 - Exit 3, `exists:` line: report that `01. Inbox` already holds a note with that name and stop.
 - Exit 2, frontmatter without a closing `---`: say the note must be fixed first and stop.
 - Exit 2 or 1, or other exit 3: report and stop.
@@ -41,6 +42,8 @@ Read `draft_file`, then apply the change with Edit on `draft_file` only (a temp 
 
 ## 4. Publish
 
+Quoting: put every publish argument in single quotes and write each `'` inside it as `'\''`, so any name works (`Tom's Cafe` becomes `'Tom'\''s Cafe'`).
+
 ```bash
 python3 "${CLAUDE_SKILL_DIR}/scripts/edit.py" publish '<note>' '<draft_file>' '<sha>'
 ```
@@ -49,6 +52,7 @@ Use the `note` path from step 2. Options go right after `publish`.
 
 - Exit 0: an `ERROR:` line, relay it and stop; otherwise step 5.
 - Exit 2, draft file not found: say so and start again at step 2; never recreate the file by hand.
+- Exit 2, note not found: start again at step 2.
 - Exit 2, the draft lost the frontmatter or has no body: put back what was lost from the original with one Edit and rerun once.
 - Other exit 2: fix the listed problems in one Edit of `draft_file` and rerun once. Missing link: use the `suggest:` note when it clearly is meant, else remove the link. Still failing: report and stop.
 - Exit 3, `secret:` lines: name the line and kind (never the value), redact with Edit, rerun. Only if the user says it is safe: `--allow-secrets`.
